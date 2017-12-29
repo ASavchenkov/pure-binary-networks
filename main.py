@@ -9,7 +9,6 @@ from torch.autograd import Variable
 
 from layers import Factorized_Linear, Factorized_BN
 
-torch.cuda.manual_seed(23)
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -76,15 +75,19 @@ class MLP(nn.Module):
     def __init__(self):
         super().__init__()
         
+        depth = 32
 
-        self.fc1 = nn.Linear(32*32,32*32)
         self.bn1 = nn.BatchNorm1d(32*32)
+
+        self.fc1_list = nn.ModuleList([nn.Linear(32*32,32*32) for i in range(depth)])
+        self.bn1_list = nn.ModuleList([nn.BatchNorm1d(32*32) for i in range(depth)])
         self.fc2 = nn.Linear(32*32,10)
 
     def forward(self, x):
         x = x.view(-1,32*32)
-        x = x + F.relu(self.fc1(x))
-        x = self.bn1(x)
+
+        for linear, bn in zip(self.fc1_list, self.bn1_list):
+            x = x + linear(F.relu(bn(x)))
         x = self.fc2(x)
         return F.log_softmax(x)
 
@@ -92,17 +95,17 @@ class MLP(nn.Module):
 class Factorized_MLP(nn.Module):
     def __init__(self):
         super().__init__()
-        reduction = 6
-        depth = 1
-        self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(2**(10-reduction + depth))])
-        self.bn1_list = nn.ModuleList([Factorized_BN(2**10) for i in range(2**(10-reduction + depth))])
+        reduction = 2
+        depth = 32
+        self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(depth)])
+        self.bn1_list = nn.ModuleList([Factorized_BN(2**10) for i in range(depth)])
         self.fc2 = Factorized_Linear([2]*10,[10],10)
 
     def forward(self, x):
         x = x.view(-1,*([2]*10))
         for linear,bn in zip(self.fc1_list,self.bn1_list):
-            x = x + F.relu(linear(x))
-            x = bn(x)
+            # x = x + F.relu(bn(linear(x)))
+            x = x + linear(F.relu(bn(x)))
             
         x = self.fc2(x)
         return F.log_softmax(x)
