@@ -1,4 +1,3 @@
-from __future__ import print_function
 import argparse
 import torch
 import torch.nn as nn
@@ -7,6 +6,10 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 
+
+from layers import Factorized_Linear
+
+torch.cuda.manual_seed(23)
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -28,7 +31,6 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
-torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
@@ -69,76 +71,38 @@ class Net(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x)
 
+
 class MLP(nn.Module):
     def __init__(self):
         super().__init__()
+        
+
         self.fc1 = nn.Linear(32*32,32*32)
         self.fc2 = nn.Linear(32*32,10)
 
     def forward(self, x):
         x = x.view(-1,32*32)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = x + F.relu(self.fc1(x))
+        x = self.fc2(x)
         return F.log_softmax(x)
 
 
-class Factorized_Residual(nn.Module):
-    #split
-    #cat
-    #cat other side
-    #reduce
-    #currently only works with 2
-    
-    #in_shape should just be an integer.
-    #bias has same shape as weights
-    def __init__(self, in_shape, bias=False):
-        super().__init__()
-        self.in_shape = in_shape
-        self.weight = Parameter(torch.Tensor(in_shape))
-        if bias:
-            self.bias = Parameter(torch.Tensor(in_shape))
-        else:
-            self.register_parameter('bias', None)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        # stdv = 1. / math.sqrt(self.weight.size(1))
-        stdv = 1 #remember we're only running with powers of 2
-        self.weight.data.uniform_(-stdv, stdv)
-        if self.bias is not None:
-            self.bias.data.uniform_(-stdv, stdv)
-
-    def forward(self, input):
-        residual = input * self.weight #becomes pointwise multiplication
-        in1,in2 = input[:self.in_shape/2], input[:self.in_shape/2]
-        res1, res2 = residual[:self.in_shape/2], residual[:self.in_shape/2]
-        
-        z = torch.cat(in1 + res2, in2 + res1) + self.bias
-
-        return z 
- 
-
-        # return F.linear(input, self.weight, self.bias)
-
-    def __repr__(self):
-        return self.__class__.__name__ + ' (' \
-            + str(self.in_shape) + ' )'
-
-class FactorizedMLP(nn.Module):
+class Factorized_MLP(nn.Module):
     def __init__(self):
         super().__init__()
-        
-
-        self.fc1 = nn.Linear(32*32,32*32)
-        self.fc2 = nn.Linear(32*32,10)
+        reduction = 7
+        self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(2*(10-reduction))])
+        self.fc2 = Factorized_Linear([2]*10,[10],10)
 
     def forward(self, x):
-        x = x.view(-1,2,2,2,2,2,2,2,2,2)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = x.view(-1,*([2]*10))
+        for linear in self.fc1_list:
+            x = x + F.relu(linear(x))
+        x = self.fc2(x)
         return F.log_softmax(x)
 
-model = MLP()
+# model = MLP()
+model = Factorized_MLP()
 if args.cuda:
     model.cuda()
 
