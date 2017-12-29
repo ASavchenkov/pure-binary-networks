@@ -7,7 +7,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 
 
-from layers import Factorized_Linear
+from layers import Factorized_Linear, Factorized_BN
 
 torch.cuda.manual_seed(23)
 # Training settings
@@ -78,11 +78,13 @@ class MLP(nn.Module):
         
 
         self.fc1 = nn.Linear(32*32,32*32)
+        self.bn1 = nn.BatchNorm1d(32*32)
         self.fc2 = nn.Linear(32*32,10)
 
     def forward(self, x):
         x = x.view(-1,32*32)
         x = x + F.relu(self.fc1(x))
+        x = self.bn1(x)
         x = self.fc2(x)
         return F.log_softmax(x)
 
@@ -90,14 +92,18 @@ class MLP(nn.Module):
 class Factorized_MLP(nn.Module):
     def __init__(self):
         super().__init__()
-        reduction = 7
-        self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(2*(10-reduction))])
+        reduction = 6
+        depth = 1
+        self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(2**(10-reduction + depth))])
+        self.bn1_list = nn.ModuleList([Factorized_BN(2**10) for i in range(2**(10-reduction + depth))])
         self.fc2 = Factorized_Linear([2]*10,[10],10)
 
     def forward(self, x):
         x = x.view(-1,*([2]*10))
-        for linear in self.fc1_list:
+        for linear,bn in zip(self.fc1_list,self.bn1_list):
             x = x + F.relu(linear(x))
+            x = bn(x)
+            
         x = self.fc2(x)
         return F.log_softmax(x)
 
