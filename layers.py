@@ -28,8 +28,9 @@ class Factorized_Linear(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        stdv = 1. / math.sqrt(float(torch.prod(torch.Tensor(self.in_shape[-self.reduction:]))))
-        # stdv = 1. / math.sqrt(float(torch.prod(torch.Tensor(self.in_shape))))
+        # stdv = 1. / math.sqrt(float(torch.prod(torch.Tensor(self.in_shape[-self.reduction:]))))
+        stdv = 1. / math.sqrt(float(torch.prod(torch.Tensor(self.in_shape))))
+        print(stdv)
         self.weight.data.uniform_(-stdv, stdv)
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
@@ -56,6 +57,34 @@ class Factorized_Linear(nn.Module):
             + str(self.in_shape) + ' )'
 
 
+
+
+class Factorized_Conv2d(nn.Module):
+    #this variant actually does transposition and makes use of
+    #included convolution functionality instead of rewriting it all
+
+    def __init__(self, in_channels, out_channels, kernel_size , padding, group_size, bias = False):
+
+        super().__init__()
+        self.group_size = group_size
+
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, padding = padding, groups = in_channels/group_size, bias = bias)
+
+    def reset_parameters(self):
+        self.conv.reset_parameters()
+
+    def forward(self,input):
+
+        output = self.conv(input)
+
+        #transpose along channels
+        N, C, H, W = output.size()
+        output = output.view(N, C/self.group_size, self.group_size, H, W)
+        output.permute(0, 2, 1, 3, 4)
+        output = output.view(N, C, H, W)
+
+        return output
+
 class Factorized_BN(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -70,3 +99,5 @@ class Factorized_BN(nn.Module):
         input = input.view(-1,self.input_size)
         output = self.bn(input).view(orig_shape)
         return output
+
+

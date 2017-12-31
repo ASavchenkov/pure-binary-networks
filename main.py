@@ -95,8 +95,8 @@ class MLP(nn.Module):
 class Factorized_MLP(nn.Module):
     def __init__(self):
         super().__init__()
-        reduction = 2
-        depth = 32
+        reduction = 4
+        depth = 2048
         self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(depth)])
         self.bn1_list = nn.ModuleList([Factorized_BN(2**10) for i in range(depth)])
         self.fc2 = Factorized_Linear([2]*10,[10],10)
@@ -105,7 +105,7 @@ class Factorized_MLP(nn.Module):
         x = x.view(-1,*([2]*10))
         for linear,bn in zip(self.fc1_list,self.bn1_list):
             # x = x + F.relu(bn(linear(x)))
-            x = x + linear(F.relu(bn(x)))
+            x = (x + linear(F.relu(bn(x))))/1
             
         x = self.fc2(x)
         return F.log_softmax(x)
