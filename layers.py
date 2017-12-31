@@ -63,7 +63,7 @@ class Factorized_Conv2d(nn.Module):
     #this variant actually does transposition and makes use of
     #included convolution functionality instead of rewriting it all
 
-    def __init__(self, in_channels, out_channels, kernel_size , padding, group_size, bias = False):
+    def __init__(self, in_channels, out_channels, kernel_size , group_size, padding = 0, bias = False):
 
         super().__init__()
         self.group_size = group_size
@@ -84,6 +84,7 @@ class Factorized_Conv2d(nn.Module):
         output = output.view(N, C, H, W)
 
         return output
+
 
 class Factorized_BN(nn.Module):
     def __init__(self, input_size):

@@ -95,7 +95,7 @@ class MLP(nn.Module):
 class Factorized_MLP(nn.Module):
     def __init__(self):
         super().__init__()
-        reduction = 4
+        reduction = 1
         depth = 2048
         self.fc1_list = nn.ModuleList([Factorized_Linear([2]*10,[2]*reduction,reduction) for i in range(depth)])
         self.bn1_list = nn.ModuleList([Factorized_BN(2**10) for i in range(depth)])
@@ -107,6 +107,36 @@ class Factorized_MLP(nn.Module):
             # x = x + F.relu(bn(linear(x)))
             x = (x + linear(F.relu(bn(x))))/1
             
+        x = self.fc2(x)
+        return F.log_softmax(x)
+
+class ResNet(nn.Module):
+    def __init__(self):
+        
+        super(Net, self).__init__()
+        depth = 16
+
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding = 1) 
+        #might as well do some work in the first convolution
+        self.conv2_list = nn.ModuleList([nn.Conv2d(32,32,3,padding=1,bias=False) for i in range(depth)])
+        self.bn2_list = nn.ModuleList([nn.BatchNorm2d(32) for i in range(depth)])
+        
+        self.fc1 = nn.Linear(784,10)
+
+    def forward(self, x):
+
+        x = self.conv1(x)
+        for conv, bn in zip(self.conv2_list, self.bn2_list):
+            x = x + conv(F.relu(bn(x)))
+
+
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 320)
+        
+
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x)
 
