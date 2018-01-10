@@ -1,5 +1,6 @@
-import torch
 from .optimizer import Optimizer, required
+
+import numpy as np
 
 
 class BinarySGD(Optimizer):
@@ -36,8 +37,16 @@ class BinarySGD(Optimizer):
                     continue
 
 
-                d_p = p.grad.data
+                solution = p.grad.data #this is still bitwise
+                
+                error = solution ^ p.data #should be same shape up until N
+
+                error = np.unpack(error.numpy())
+                total_error = np.sum(error,(0,-1)) #sum over bits and batch
+                
+                
 
                 p.data.add_(-group['lr'], d_p)
+                
 
         return loss
