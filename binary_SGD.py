@@ -41,6 +41,7 @@ class BinarySGD(Optimizer):
                 
                 error = solution ^ p.data #should be same shape up until N
                 #apply popc to get integer errors
+                #(note, both cupy and pytorch special version are available)
                 #divide by threshold
                 #then clamp to 0 and 1
                 #cast to uint
