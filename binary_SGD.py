@@ -1,8 +1,8 @@
 from .optimizer import Optimizer, required
 
 import numpy as np
-
-
+from binutils import popc
+#used for deciding which bits get set
 class BinarySGD(Optimizer):
     r"""Implements Binary SGD
 
@@ -40,9 +40,12 @@ class BinarySGD(Optimizer):
                 solution = p.grad.data #this is still bitwise
                 
                 error = solution ^ p.data #should be same shape up until N
-
-                error = np.unpack(error.numpy())
-                total_error = np.sum(error,(0,-1)) #sum over bits and batch
+                #apply popc to get integer errors
+                #divide by threshold
+                #then clamp to 0 and 1
+                #cast to uint
+                #multiply by 256
+                #THRESHOLD MUST ALWAYS BE ABOVE HALF
                 
                 
 
