@@ -1,20 +1,21 @@
-from .optimizer import Optimizer, required
+import torch
+from torch.optimizer import Optimizer, required
 
-import numpy as np
-from binutils import popc
-#used for deciding which bits get set
+# import popc_cuda 
+from popc_cuda import popc
+
 class BinarySGD(Optimizer):
     r"""Implements Binary SGD
 
     Example:
-        >>> optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
+        >>> optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
         >>> optimizer.zero_grad()
         >>> loss_fn(model(input), target).backward()
         >>> optimizer.step()
 
 
-    lr defines the threshold for when bits flip. Lower LR means lower threshold
-    means more bits flip.
+    lr defines percentage correct below which a bit is flipped
+    don't ever make it 0.5 or higher. That makes the network "unlearn"
     """
 
     def __init__(self, params, lr=required):
@@ -31,7 +32,7 @@ class BinarySGD(Optimizer):
         loss = None
 
         for group in self.param_groups:
-
+             
             for p in group['params']:
                 if p.grad is None:
                     continue
@@ -40,12 +41,14 @@ class BinarySGD(Optimizer):
                 solution = p.grad.data #this is still bitwise
                 
                 error = solution ^ p.data #should be same shape up until N
-                #apply popc to get integer errors
-                #(note, both cupy and pytorch special version are available)
-                #divide by threshold
-                #then clamp to 0 and 1
-                #cast to uint
-                #multiply by 256
+                
+                max_count = error.size()[0]*8 #figure out what the theshold should be
+                threshold = int(max_count*(1-self.lr))
+
+                counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over batches
+                flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
+                p.data = p.data ^ flip #XOR flips things. That's how it works.
+                
                 #THRESHOLD MUST ALWAYS BE ABOVE HALF
                 
                 

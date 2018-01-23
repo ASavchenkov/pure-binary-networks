@@ -5,8 +5,11 @@ from torch.autograd import Function, Variable
 #For the sake of intuition, gradients are passed back not as a gradient
 #but as a solution, meaning the bits getting passed back are what that
 #bit "should" be in order to reduce the loss function.
+#This is backwards from how gradients are conventionally represented.
 
-#inputs are N dimensional tensors of integers
+
+
+#inputs are N dimensional tensors of bytes
 class XNOR(Function):
 
     @staticmethod
