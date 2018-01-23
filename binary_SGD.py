@@ -4,7 +4,7 @@ from torch.optimizer import Optimizer, required
 # import popc_cuda 
 from popc_cuda import popc
 
-class BinarySGD(Optimizer):
+class B_SGD(Optimizer):
     r"""Implements Binary SGD
 
     Example:
@@ -50,10 +50,6 @@ class BinarySGD(Optimizer):
                 p.data = p.data ^ flip #XOR flips things. That's how it works.
                 
                 #THRESHOLD MUST ALWAYS BE ABOVE HALF
-                
-                
-
-                p.data.add_(-group['lr'], d_p)
                 
 
         return loss

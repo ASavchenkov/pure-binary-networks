@@ -111,6 +111,7 @@ if __name__ == '__main__':
 
     z = b_loss(h,y)
     z.backward()
-    # print(z)
+    print(z)
+    print(h.grad)
 
     pass
