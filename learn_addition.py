@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 
 import numpy as np
 
@@ -22,18 +23,21 @@ def generate_data(batch_size):
     y = np.sum(x,axis=1, keepdims=True, dtype=np.uint8)
 
     x,y = bit_batch(x),bit_batch(y)
+    return torch.from_numpy(x), torch.from_numpy(y)
 
+#this is a lie. It either generates 0 or 255
+#this is because shuffling within a byte sucks
 def gen_rand_bits(shape):
-    return (torch.rand()*2).byte()*255
+    return (torch.rand(shape)*2).byte()*255
 
 #does both orientations in a row
 class Residual_Binary(nn.Module):
     def __init__(self, width):
         super().__init__()
-        self.w1 = gen_rand_bits(width)
-        self.w2 = gen_rand_bits(width)
-        self.b = gen_rand_bits(width)
-        self.b2 = gen_rand_bits(width)
+        self.w1 = nn.Parameter(gen_rand_bits(width))
+        self.w2 = nn.Parameter(gen_rand_bits(width))
+        self.b1 = nn.Parameter(gen_rand_bits(width))
+        self.b2 = nn.Parameter(gen_rand_bits(width))
 
     def forward(self, x):
         z = bl.b_xnor(x,self.w1)
@@ -48,28 +52,43 @@ class Residual_Binary(nn.Module):
 class Net(nn.Module):
     def __init__(self, width, depth):
         super().__init__()
-        self.layers = nn.Sequential(*[Residual_Binary(width) for i in range(depth)])
+        # self.layers = nn.Sequential(*[Residual_Binary(width) for i in range(depth)])
+        self.layers = Residual_Binary(width)
 
         
     def forward(self, x):
-        x = torch.cat([x]*self.tiling, dim = 1)
-        h = self.layers(x) #output is also tiled, and so will the label be
+        h = self.layers(x)
         return h
         
 
 
 if __name__ == '__main__':
-
-    model = Net(256,32)
-
-    optimizer = B_SGD(model.parameters(),lr = 0.01)
-
-    for i in range(1):
-        x,y = generate_data(8)
-        h = net(x)
-        tiling = h.size()[1]//y.size()[1]
-        loss = bl.b_loss(x,torch.cat([y]*tiling))
-        loss.backward
     
+    model_width = 16
+    model = Net(model_width,1)
+    model = model.cuda()
+
+    optimizer = B_SGD(model.parameters(),lr = 0.3) #lr is again related to batch size
+
+    xx, yy =    generate_data(16)
+    xx, yy =    xx.cuda(), yy.cuda()
+    for i in range(10):
+
+        #I'm too lazy to write layers that squeeze,
+        #so it's easier to tile the inputs and outputs.
+        #same result, different code.
+        x = torch.cat([xx]*(model_width//16))
+        y = torch.cat([yy]*(model_width//8), dim = 1)
+
+        x,y = Variable(x), Variable(y)
+
+        # optimizer.zero_grad()
+        
+        h = model(x)
+        loss = bl.b_loss(h,y)
+        print(loss)
+
+        loss.backward()
+        optimizer.step() 
 
         

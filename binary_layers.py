@@ -1,6 +1,8 @@
 import torch
-
 from torch.autograd import Function, Variable
+from torch.nn import Parameter
+
+from popc_cuda import popc
 
 #For the sake of intuition, gradients are passed back not as a gradient
 #but as a solution, meaning the bits getting passed back are what that
@@ -13,14 +15,15 @@ from torch.autograd import Function, Variable
 class XNOR(Function):
 
     @staticmethod
-    def forward(ctx, a,b):
+    def forward(ctx, a, b):
         ctx.save_for_backward(a,b)
-        return (a ^ b) ^ 255 #definition of xnor. Use xnor with 255 to do not
+        
+        out  = (a ^ b) ^ 255 #definition of xnor. Use xnor with 255 to do not
+        return out
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod
     def backward(ctx, grad_output):
-        print(grad_output)
         a , b = ctx.saved_variables
         ga = gb = None
 
@@ -31,6 +34,8 @@ class XNOR(Function):
         return ga, gb
 
 b_xnor = XNOR.apply
+# def b_xnor(a,b):
+
 
 class AND(Function):
 
@@ -85,8 +90,9 @@ class XORLoss(Function):
     @staticmethod
     def forward(ctx, h, y):
         ctx.save_for_backward(h,y)
-
-        return h ^ y #definition of or
+        
+        counts = popc(h ^ y)
+        return torch.Tensor([torch.sum(counts)])
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -106,12 +112,11 @@ b_loss = XORLoss.apply
 #for testing gradients
 if __name__ == '__main__':
 
-    h = Variable(torch.ByteTensor([1]), requires_grad=True)
+    h = Parameter(torch.ByteTensor([1]), requires_grad=True)
     y = Variable(torch.ByteTensor([3]), requires_grad=False)
 
-    z = b_loss(h,y)
+    z = b_xnor(h,y)
+    z = b_loss(z,z)
     z.backward()
-    print(z)
-    print(h.grad)
 
     pass
