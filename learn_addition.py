@@ -58,7 +58,7 @@ class Residual_Binary(nn.Module):
         z = bl.b_and(z,self.b1)
         z = swap(z)
         x = bl.b_or(x,z)
-        x = transpose2(x)
+        # x = transpose2(x)
         z = bl.b_xnor(x,self.w2)
         z = bl.b_or(z,self.b2)
         z = swap(z)
