@@ -18,7 +18,7 @@ class B_SGD(Optimizer):
     don't ever make it 0.5 or higher. That makes the network "unlearn"
     """
 
-    def __init__(self, params, lr=0.01):
+    def __init__(self, params, lr=1):
         self.lr = lr
         defaults = dict(lr=lr)
         super().__init__(params, defaults)
@@ -32,11 +32,15 @@ class B_SGD(Optimizer):
         error = solution ^ p.data
 
         max_count = error.size()[0]*8 #figure out what the theshold should be
-        threshold = int(max_count*(1-self.lr))
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over batches
+        # threshold = max_count-self.lr 
+        # threshold = int(max_count*(1-self.lr))
+        threshold = torch.max(counts)
+        print(counts)
+
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
-        p.data = p.data ^ flip #XOR'l flip ya. flip ya fo real. *taptaptap* Can ya hear me in the back?
+        p.data = p.data ^ flip #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
     
     #this sets bits based on "confidence". Doesn't care about actual value of p.data
     #the most theoretically pure one, since the other one technically uses a second
@@ -45,7 +49,8 @@ class B_SGD(Optimizer):
         
         solution = p.grad.data
         max_count = solution.size()[0]*8 
-        threshold = int(max_count*self.lr)
+        # threshold = int(max_count*self.lr)
+        threshold = self.lr
 
         counts = torch.sum(popc(solution),dim=0)
 
@@ -67,7 +72,8 @@ class B_SGD(Optimizer):
                     continue
                 
                 #there are 2 functions that operate differently
-                self._set_by_confidence(p)
+                # self._set_by_confidence(p)
+                self._set_by_error(p)
                 
 
                 

@@ -28,14 +28,12 @@ class XNOR(Function):
         ga = gb = None
 
         if ctx.needs_input_grad[0]:
-            ga = b ^ grad_output
+            ga = (b ^ grad_output) ^ 255
         if ctx.needs_input_grad[1]:
-            gb = a ^ grad_output
+            gb = (a ^ grad_output) ^ 255
         return ga, gb
 
 b_xnor = XNOR.apply
-# def b_xnor(a,b):
-
 
 class AND(Function):
 
@@ -92,7 +90,7 @@ class XORLoss(Function):
         ctx.save_for_backward(h,y)
         
         counts = popc(h ^ y)
-        return torch.Tensor([torch.sum(counts)])
+        return torch.IntTensor([torch.sum(counts)])
 
     @staticmethod
     def backward(ctx, grad_output):
