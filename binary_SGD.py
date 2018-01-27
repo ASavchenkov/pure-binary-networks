@@ -21,25 +21,33 @@ class B_SGD(Optimizer):
     def __init__(self, params, lr=1):
         self.lr = lr
         defaults = dict(lr=lr)
-        self.cur_iteration = 0
         super().__init__(params, defaults)
 
     def __setstate__(self, state):
         super().__setstate__(state)
     
-    #this flips bits based on "wrongness"
-    def _set_by_error(self,p):
+    def _get_max_flip(self,p):
         solution = p.grad.data
         error = solution ^ p.data
-
-        max_count = error.size()[0]*8 #figure out what the theshold should be
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
         # threshold = max_count-self.lr 
         # threshold = int(max_count*(1-self.lr))
-        threshold = torch.max(counts)
-        print(threshold)
+        return torch.max(counts)
 
+
+    #this flips bits based on "wrongness"
+    def _set_by_error(self, p, threshold = None):
+        solution = p.grad.data
+        error = solution ^ p.data
+
+        # max_count = error.size()[0]*8 #figure out what the theshold should be
+        counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
+        if(not threshold):
+            # threshold = max_count-self.lr 
+            # threshold = int(max_count*(1-self.lr))
+            threshold = torch.max(counts)
+        print(threshold,torch.max(counts))
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
         p.data = p.data ^ flip
         #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
@@ -68,18 +76,17 @@ class B_SGD(Optimizer):
         loss = None
 
         for group in self.param_groups:
-             
+            max_count = 0
+            max_idx = 0
             for i,p in enumerate(group['params']):
                 if p.grad is None:
                     continue
-                
-                #trying out more aggressive learning rate lowering
-                if i==self.cur_iteration%len(group['params']):
-                    self._set_by_error(p)
+                this_max = self._get_max_flip(p)
+                if(this_max>max_count):
+                    max_count = this_max 
+                    max_idx = i
+            self._set_by_error(group['params'][max_idx], max_count)
 
-                #there are 2 functions that operate differently
-                # self._set_by_confidence(p)
         
-        self.cur_iteration+=1
 
         return loss

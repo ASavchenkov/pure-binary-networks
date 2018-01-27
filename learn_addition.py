@@ -89,7 +89,7 @@ if __name__ == '__main__':
     lr = 1
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
-    xx, yy =    generate_data(1024)
+    xx, yy =    generate_data(8)
     xx, yy =    xx.cuda(), yy.cuda()
     x = torch.cat([xx]*(model_width//2),dim = 1)
     y = torch.cat([yy]*(model_width//2), dim = 1)
