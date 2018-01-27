@@ -21,6 +21,7 @@ class B_SGD(Optimizer):
     def __init__(self, params, lr=1):
         self.lr = lr
         defaults = dict(lr=lr)
+        self.cur_iteration = 0
         super().__init__(params, defaults)
 
     def __setstate__(self, state):
@@ -33,14 +34,15 @@ class B_SGD(Optimizer):
 
         max_count = error.size()[0]*8 #figure out what the theshold should be
 
-        counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over batches
+        counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
         # threshold = max_count-self.lr 
         # threshold = int(max_count*(1-self.lr))
         threshold = torch.max(counts)
-        print(counts)
+        print(threshold)
 
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
-        p.data = p.data ^ flip #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
+        p.data = p.data ^ flip
+        #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
     
     #this sets bits based on "confidence". Doesn't care about actual value of p.data
     #the most theoretically pure one, since the other one technically uses a second
@@ -67,16 +69,17 @@ class B_SGD(Optimizer):
 
         for group in self.param_groups:
              
-            for p in group['params']:
+            for i,p in enumerate(group['params']):
                 if p.grad is None:
                     continue
                 
+                #trying out more aggressive learning rate lowering
+                if i==self.cur_iteration%len(group['params']):
+                    self._set_by_error(p)
+
                 #there are 2 functions that operate differently
                 # self._set_by_confidence(p)
-                self._set_by_error(p)
-                
-
-                
-                
+        
+        self.cur_iteration+=1
 
         return loss

@@ -82,14 +82,14 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     
-    model_width = 2**2
-    model = Net(model_width,1)
+    model_width = 2**8
+    model = Net(model_width,8)
     model = model.cuda()
 
     lr = 1
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
-    xx, yy =    generate_data(8)
+    xx, yy =    generate_data(1024)
     xx, yy =    xx.cuda(), yy.cuda()
     x = torch.cat([xx]*(model_width//2),dim = 1)
     y = torch.cat([yy]*(model_width//2), dim = 1)
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     x,y = Variable(x), Variable(y)
 
     last_loss = 0
-    for i in range(1):
+    for i in range(1000):
 
         #I'm too lazy to write layers that squeeze,
         #so it's easier to tile the inputs and outputs.
@@ -114,11 +114,10 @@ if __name__ == '__main__':
         loss.backward()
         optimizer.step() 
 
-        if(print_loss==last_loss and lr<500):
-            lr+=1
-            optimizer.lr = lr
-        else:
-            print(i,lr,print_loss)
-            pass
+        # if(print_loss==last_loss and lr<500):
+            # lr+=1
+            # optimizer.lr = lr
+        # else:
+        print(i,lr,print_loss)
         last_loss = print_loss
         
