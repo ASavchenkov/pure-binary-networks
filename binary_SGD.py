@@ -47,7 +47,6 @@ class B_SGD(Optimizer):
             # threshold = max_count-self.lr 
             # threshold = int(max_count*(1-self.lr))
             threshold = torch.max(counts)
-        print(threshold,torch.max(counts))
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
         p.data = p.data ^ flip
         #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
@@ -86,6 +85,7 @@ class B_SGD(Optimizer):
                     max_count = this_max 
                     max_idx = i
             self._set_by_error(group['params'][max_idx], max_count)
+            print(max_count)
 
         
 

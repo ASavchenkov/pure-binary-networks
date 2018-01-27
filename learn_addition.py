@@ -19,12 +19,14 @@ def un_bit_batch(x):
     return x
 
 def generate_data(batch_size):
-    x =  np.random.randint(0,2,(batch_size,2), dtype = np.uint8)
+    # x =  np.random.randint(0,2,(batch_size,2), dtype = np.uint8)
+    x = np.array([[0,0,0,0,1,1,1,1],[0,0,1,1,0,0,1,1]], dtype = np.uint8).T
     y = np.sum(x,axis=1, keepdims=True, dtype=np.uint8)
 
     x,y = bit_batch(x),bit_batch(y)
     x = x[:,[7,-1]]
     y = y[:,[6,7]]
+
     return torch.from_numpy(x), torch.from_numpy(y)
 
 #this is a lie. It either generates 0 or 255
@@ -50,17 +52,24 @@ class Residual_Binary(nn.Module):
         super().__init__()
         self.w1 = nn.Parameter(gen_rand_bits(width))
         self.w2 = nn.Parameter(gen_rand_bits(width))
-        self.b1 = nn.Parameter(gen_rand_bits(width))
-        self.b2 = nn.Parameter(gen_rand_bits(width))
+        self.b11 = nn.Parameter(gen_rand_bits(width))
+        self.b21 = nn.Parameter(gen_rand_bits(width))
+        self.b12 = nn.Parameter(gen_rand_bits(width))
+        self.b22 = nn.Parameter(gen_rand_bits(width))
 
     def forward(self, x):
+        #this architecture needs to do bias on the highway
+        #not on the xnor output. This is because otherwise,
+        #there's no way to remove a certain peice of information.
         z = bl.b_xnor(x,self.w1)
-        z = bl.b_and(z,self.b1)
+        z = bl.b_and(z,self.b11)
+        x = bl.b_and(x,self.b12)
         z = swap(z)
         x = bl.b_or(x,z)
         # x = transpose2(x)
         z = bl.b_xnor(x,self.w2)
-        z = bl.b_or(z,self.b2)
+        z = bl.b_or(z,self.b21)
+        x = bl.b_or(z,self.b22)
         z = swap(z)
         x = bl.b_and(x,z)
         x = transpose2(x)
@@ -82,8 +91,8 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     
-    model_width = 2**8
-    model = Net(model_width,8)
+    model_width = 2**2
+    model = Net(model_width,1)
     model = model.cuda()
 
     lr = 1
@@ -97,7 +106,7 @@ if __name__ == '__main__':
     x,y = Variable(x), Variable(y)
 
     last_loss = 0
-    for i in range(1000):
+    for i in range(100):
 
         #I'm too lazy to write layers that squeeze,
         #so it's easier to tile the inputs and outputs.
