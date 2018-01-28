@@ -72,7 +72,6 @@ class B_SGD(Optimizer):
         """ Performs a single optimization step.
             only changes bits with a high enough error
         """
-        loss = None
 
         for group in self.param_groups:
             max_count = 0
@@ -84,9 +83,9 @@ class B_SGD(Optimizer):
                 if(this_max>max_count):
                     max_count = this_max 
                     max_idx = i
-            self._set_by_error(group['params'][max_idx], max_count)
-            print(max_count)
+            for p in group['params']:
+
+                self._set_by_error(p, max_count)
 
         
-
-        return loss
+        return max_count,max_idx

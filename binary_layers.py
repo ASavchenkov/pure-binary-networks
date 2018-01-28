@@ -87,7 +87,7 @@ class SPLIT_OR(Function):
     @staticmethod
     def forward(ctx, a):
         ctx.save_for_backward(a)
-        return a, a
+        return a, a.clone()
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod
@@ -109,7 +109,7 @@ class SPLIT_AND(Function):
     @staticmethod
     def forward(ctx, a):
         ctx.save_for_backward(a)
-        return a, a
+        return a, a.clone()
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod

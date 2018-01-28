@@ -52,20 +52,24 @@ class Residual_Binary(nn.Module):
         super().__init__()
         self.w1 = nn.Parameter(gen_rand_bits(width))
         self.w2 = nn.Parameter(gen_rand_bits(width))
-        self.b1 = nn.Parameter(gen_rand_bits(width))
-        self.b2 = nn.Parameter(gen_rand_bits(width))
+        self.b11 = nn.Parameter(gen_rand_bits(width))
+        self.b21 = nn.Parameter(gen_rand_bits(width))
+        # self.b12 = nn.Parameter(gen_rand_bits(width))
+        # self.b22 = nn.Parameter(gen_rand_bits(width))
 
     def forward(self, x):
 
-        z,x = bl.b_split_and(x)
+        z,x = bl.b_split_or(x)
         z = bl.b_xnor(z,self.w1)
-        z = bl.b_and(z,self.b1)
+        z = bl.b_and(z,self.b11)
+        # x = bl.b_and(x,self.b12)
         z = swap(z)
         x = bl.b_or(x,z)
 
-        z,x = bl.b_split_or(x)
+        z,x = bl.b_split_and(x)
         z = bl.b_xnor(x,self.w2)
-        z = bl.b_or(z,self.b2)
+        z = bl.b_or(z,self.b21)
+        # x = bl.b_or(z,self.b22)
         z = swap(z)
         x = bl.b_and(x,z)
 
@@ -88,14 +92,14 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     
-    model_width = 2**10
-    model = Net(model_width,10)
+    model_width = 2**2
+    model = Net(model_width,20)
     model = model.cuda()
 
     lr = 1
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
-    xx, yy =    generate_data(1024)
+    xx, yy =    generate_data(2**10)
     xx, yy =    xx.cuda(), yy.cuda()
     x = torch.cat([xx]*(model_width//2),dim = 1)
     y = torch.cat([yy]*(model_width//2), dim = 1)
@@ -103,7 +107,7 @@ if __name__ == '__main__':
     x,y = Variable(x), Variable(y)
 
     last_loss = 0
-    for i in range(100):
+    for i in range(1024*16):
 
         #I'm too lazy to write layers that squeeze,
         #so it's easier to tile the inputs and outputs.
@@ -113,17 +117,18 @@ if __name__ == '__main__':
         # optimizer.zero_grad()
         
         h = model(x)
+        print(h)
         loss = bl.b_loss(h,y)
         print_loss = loss.data.numpy()[0]
          
 
         loss.backward()
-        optimizer.step() 
+        max_count, max_idx = optimizer.step() 
 
         # if(print_loss==last_loss and lr<500):
             # lr+=1
             # optimizer.lr = lr
         # else:
-        print(i,lr,print_loss)
+        print(i,max_count,max_idx,print_loss)
         last_loss = print_loss
         
