@@ -80,6 +80,50 @@ class OR(Function):
         return ga, gb
 b_or = OR.apply
 
+#to make sure backprop uses binary OR/AND
+#instead of integer addition
+class SPLIT_OR(Function):
+
+    @staticmethod
+    def forward(ctx, a):
+        ctx.save_for_backward(a)
+        return a, a
+
+    # This gradient is actually the solution since it's a binary output
+    @staticmethod
+    def backward(ctx, grad_output_1, grad_output_2):
+
+        a, = ctx.saved_variables
+        
+        ga = None
+
+        if ctx.needs_input_grad[0]:
+            ga = grad_output_1 | grad_output_2
+
+        return ga
+b_split_or = SPLIT_OR.apply
+
+#same thing as with OR. This is to provide balance to the force
+class SPLIT_AND(Function):
+
+    @staticmethod
+    def forward(ctx, a):
+        ctx.save_for_backward(a)
+        return a, a
+
+    # This gradient is actually the solution since it's a binary output
+    @staticmethod
+    def backward(ctx, grad_output_1, grad_output_2):
+
+        a, = ctx.saved_variables
+        
+        ga = None
+
+        if ctx.needs_input_grad[0]:
+            ga = grad_output_1 & grad_output_2
+
+        return ga
+b_split_and = SPLIT_AND.apply
 
 #gives unreduced loss. gh = y because the intent is to get bits correct
 #regardless of what the network output.
