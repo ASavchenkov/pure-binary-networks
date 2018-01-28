@@ -19,8 +19,8 @@ def un_bit_batch(x):
     return x
 
 def generate_data(batch_size):
-    # x =  np.random.randint(0,2,(batch_size,2), dtype = np.uint8)
-    x = np.array([[0,0,0,0,1,1,1,1],[0,0,1,1,0,0,1,1]], dtype = np.uint8).T
+    x =  np.random.randint(0,2,(batch_size,2), dtype = np.uint8)
+    # x = np.array([[0,0,0,0,1,1,1,1],[0,0,1,1,0,0,1,1]], dtype = np.uint8).T
     y = np.sum(x,axis=1, keepdims=True, dtype=np.uint8)
 
     x,y = bit_batch(x),bit_batch(y)
@@ -52,26 +52,23 @@ class Residual_Binary(nn.Module):
         super().__init__()
         self.w1 = nn.Parameter(gen_rand_bits(width))
         self.w2 = nn.Parameter(gen_rand_bits(width))
-        self.b11 = nn.Parameter(gen_rand_bits(width))
-        self.b21 = nn.Parameter(gen_rand_bits(width))
-        self.b12 = nn.Parameter(gen_rand_bits(width))
-        self.b22 = nn.Parameter(gen_rand_bits(width))
+        self.b1 = nn.Parameter(gen_rand_bits(width))
+        self.b2 = nn.Parameter(gen_rand_bits(width))
 
     def forward(self, x):
-        #this architecture needs to do bias on the highway
-        #not on the xnor output. This is because otherwise,
-        #there's no way to remove a certain peice of information.
-        z = bl.b_xnor(x,self.w1)
-        z = bl.b_and(z,self.b11)
-        x = bl.b_and(x,self.b12)
+
+        z,x = bl.b_split_and(x)
+        z = bl.b_xnor(z,self.w1)
+        z = bl.b_and(z,self.b1)
         z = swap(z)
         x = bl.b_or(x,z)
-        # x = transpose2(x)
+
+        z,x = bl.b_split_or(x)
         z = bl.b_xnor(x,self.w2)
-        z = bl.b_or(z,self.b21)
-        x = bl.b_or(z,self.b22)
+        z = bl.b_or(z,self.b2)
         z = swap(z)
         x = bl.b_and(x,z)
+
         x = transpose2(x)
         return x
 
@@ -91,14 +88,14 @@ class Net(nn.Module):
 
 if __name__ == '__main__':
     
-    model_width = 2**2
-    model = Net(model_width,1)
+    model_width = 2**10
+    model = Net(model_width,10)
     model = model.cuda()
 
     lr = 1
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
-    xx, yy =    generate_data(8)
+    xx, yy =    generate_data(1024)
     xx, yy =    xx.cuda(), yy.cuda()
     x = torch.cat([xx]*(model_width//2),dim = 1)
     y = torch.cat([yy]*(model_width//2), dim = 1)
