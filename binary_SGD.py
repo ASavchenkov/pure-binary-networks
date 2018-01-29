@@ -31,8 +31,7 @@ class B_SGD(Optimizer):
         error = solution ^ p.data
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
-        # threshold = max_count-self.lr 
-        # threshold = int(max_count*(1-self.lr))
+        # counts = counts.float() * torch.Tensor(counts.size()).normal_(0,1).cuda()
         return torch.max(counts)
 
 
@@ -41,11 +40,8 @@ class B_SGD(Optimizer):
         solution = p.grad.data
         error = solution ^ p.data
 
-        # max_count = error.size()[0]*8 #figure out what the theshold should be
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
         if(not threshold):
-            # threshold = max_count-self.lr 
-            # threshold = int(max_count*(1-self.lr))
             threshold = torch.max(counts)
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
         p.data = p.data ^ flip
@@ -84,8 +80,10 @@ class B_SGD(Optimizer):
                     max_count = this_max 
                     max_idx = i
             for p in group['params']:
+                if p.grad is None:
+                    continue
 
-                self._set_by_error(p, max_count)
+                self._set_by_error(p,max_count)
 
         
         return max_count,max_idx
