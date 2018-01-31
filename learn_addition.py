@@ -121,13 +121,52 @@ class Net(nn.Module):
         # x = bl.b_and(x,self.b2)
         print('-----------------------------------------------------------------')
         return x
-        
 
+
+#specifically built to learn XOR
+class XORNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        #first layer weights
+        # self.w1 = nn.Parameter(gen_rand_bits(2,0.5))
+        # self.w2 = nn.Parameter(gen_rand_bits(2,0.5))
+
+        self.w1 = nn.Parameter(torch.ByteTensor([255,0]))
+        self.w2 = nn.Parameter(torch.ByteTensor([0,255]))
+        
+        #second layer weights
+        self.w3 = nn.Parameter(torch.ByteTensor([255,255]))
+        self.w4 = nn.Parameter(torch.ByteTensor([255,255]))
+
+        
+    def forward(self, x):
+        
+        x1,x2 = bl.b_split_and(x)
+        
+        z1 = bl.b_xnor(x1,self.w1)
+        z2 = bl.b_xnor(x2,self.w2)
+
+        z1 = swap(z1)
+        
+        x = bl.b_or(z1,z2)
+        x1,x2 = bl.b_split_and(x)
+        z1 = bl.b_xnor(x1,self.w3)
+        z2 = bl.b_xnor(x2,self.w4)
+        
+        z1 = swap(z1)
+
+        x = bl.b_and(z1,z2)
+        
+        
+        # x = bl.b_or(x,self.b1)
+        # x = bl.b_and(x,self.b2)
+        return x
 
 if __name__ == '__main__':
     
-    model_width = 2**3
-    model = Net(model_width,8)
+    model_width = 2**1
+    # model = Net(model_width,8)
+    model = XORNet()
     model = model.cuda()
 
     lr = 1
@@ -141,7 +180,7 @@ if __name__ == '__main__':
     x,y = Variable(x), Variable(y)
 
     last_loss = 0
-    for i in range(3):
+    for i in range(6):
 
         #I'm too lazy to write layers that squeeze,
         #so it's easier to tile the inputs and outputs.
