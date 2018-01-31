@@ -19,9 +19,9 @@ def un_bit_batch(x):
     return x
 
 def generate_data(batch_size):
-    # x =  np.random.randint(0,2,(batch_size,2), dtype = np.uint8)
-    x = np.array([[0,0,0,0,1,1,1,1],
-                  [0,0,1,1,0,0,1,1]], dtype = np.uint8).T
+    x =  np.random.randint(0,2,(batch_size,2), dtype = np.uint8)
+    # x = np.array([[0,0,0,0,1,1,1,1],
+                  # [0,0,1,1,0,0,1,1]], dtype = np.uint8).T
     y = np.sum(x,axis=1, keepdims=True, dtype=np.uint8)
 
     x,y = bit_batch(x),bit_batch(y)
@@ -152,10 +152,10 @@ class XORNet(nn.Module):
         z1 = swap(z1)
         
         x = bl.b_or(z1,z2)
-        x1,x2 = bl.b_split_and(x)
+        x1,x2 = bl.b_split_or(x)
         z1 = bl.b_xnor(x1,self.w3)
         z2 = bl.b_xnor(x2,self.w4)
-        
+
         z1 = swap(z1)
 
         x = bl.b_and(z1,z2)
@@ -175,15 +175,16 @@ if __name__ == '__main__':
     lr = 1
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
-    xx, yy =    generate_data(2**10)
-    xx, yy =    xx.cuda(), yy.cuda()
-    x = torch.cat([xx]*(model_width//2),dim = 1)
-    y = torch.cat([yy]*(model_width//2), dim = 1)
-
-    x,y = Variable(x), Variable(y)
-
     last_loss = 0
-    for i in range(30):
+    for i in range(1000):
+
+        xx, yy =    generate_data(2**3)
+        xx, yy =    xx.cuda(), yy.cuda()
+        x = torch.cat([xx]*(model_width//2),dim = 1)
+        y = torch.cat([yy]*(model_width//2), dim = 1)
+
+        x,y = Variable(x), Variable(y)
+
 
         #I'm too lazy to write layers that squeeze,
         #so it's easier to tile the inputs and outputs.
@@ -195,13 +196,12 @@ if __name__ == '__main__':
         h = model(x)
         loss = bl.b_loss(h,y)
         print_loss = loss.data.numpy()[0]
-         
-
+        
         loss.backward()
         max_count, max_idx = optimizer.step() 
 
         print_h = np.unpackbits(h.data.cpu().numpy(),axis=0)
-        print(print_h)
+        # print(y,print_h)
         print(i,max_count,max_idx,print_loss)
         last_loss = print_loss
         

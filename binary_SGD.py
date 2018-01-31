@@ -30,7 +30,7 @@ class B_SGD(Optimizer):
         error = p.grad.data
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
-        print(counts)
+        # print(counts)
         max_count = torch.max(counts)
         return max_count
 
@@ -44,6 +44,7 @@ class B_SGD(Optimizer):
             threshold = torch.max(counts)
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
         p.data = p.data ^ flip
+        p.grad.data = p.grad.data & 0
         #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
     
     #this sets bits based on "confidence". Doesn't care about actual value of p.data
