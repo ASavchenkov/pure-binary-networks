@@ -27,18 +27,17 @@ class B_SGD(Optimizer):
         super().__setstate__(state)
     
     def _get_max_flip(self,p):
-        solution = p.grad.data
-        error = solution ^ p.data
+        error = p.grad.data
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
-        # counts = counts.float() * torch.Tensor(counts.size()).normal_(0,1).cuda()
-        return torch.max(counts)
+        print(counts)
+        max_count = torch.max(counts)
+        return max_count
 
 
     #this flips bits based on "wrongness"
     def _set_by_error(self, p, threshold = None):
-        solution = p.grad.data
-        error = solution ^ p.data
+        error = p.grad.data
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
         if(not threshold):
@@ -75,15 +74,20 @@ class B_SGD(Optimizer):
             for i,p in enumerate(group['params']):
                 if p.grad is None:
                     continue
+
                 this_max = self._get_max_flip(p)
                 if(this_max>max_count):
                     max_count = this_max 
                     max_idx = i
+
+            #if you're solving a simple problem, it's possible to get a perfect solution.
+            if max_count==0:
+                return 0, 0
+
             for p in group['params']:
                 if p.grad is None:
                     continue
 
                 self._set_by_error(p,max_count)
-
         
         return max_count,max_idx

@@ -128,15 +128,18 @@ class XORNet(nn.Module):
     def __init__(self):
         super().__init__()
         #first layer weights
-        # self.w1 = nn.Parameter(gen_rand_bits(2,0.5))
-        # self.w2 = nn.Parameter(gen_rand_bits(2,0.5))
+        self.w1 = nn.Parameter(gen_rand_bits(2,0.5))
+        self.w2 = nn.Parameter(gen_rand_bits(2,0.5))
 
-        self.w1 = nn.Parameter(torch.ByteTensor([255,0]))
-        self.w2 = nn.Parameter(torch.ByteTensor([0,255]))
+        # self.w1 = nn.Parameter(torch.ByteTensor([255,0]))
+        # self.w2 = nn.Parameter(torch.ByteTensor([0,255]))
         
         #second layer weights
-        self.w3 = nn.Parameter(torch.ByteTensor([255,255]))
-        self.w4 = nn.Parameter(torch.ByteTensor([255,255]))
+        self.w3 = nn.Parameter(gen_rand_bits(2,0.5))
+        self.w4 = nn.Parameter(gen_rand_bits(2,0.5))
+
+        # self.w3 = nn.Parameter(torch.ByteTensor([255,255]))
+        # self.w4 = nn.Parameter(torch.ByteTensor([255,255]))
 
         
     def forward(self, x):
@@ -180,7 +183,7 @@ if __name__ == '__main__':
     x,y = Variable(x), Variable(y)
 
     last_loss = 0
-    for i in range(6):
+    for i in range(30):
 
         #I'm too lazy to write layers that squeeze,
         #so it's easier to tile the inputs and outputs.

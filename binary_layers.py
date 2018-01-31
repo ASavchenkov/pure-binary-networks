@@ -5,10 +5,9 @@ from torch.nn import Parameter
 from popc_cuda import popc
 
 #For the sake of intuition, gradients are passed back not as a gradient
-#but as a solution, meaning the bits getting passed back are what that
-#bit "should" be in order to reduce the loss function.
-#This is backwards from how gradients are conventionally represented.
-
+#but as "error", meaning the bits getting passed back are whether or not
+#the bit is wrong. We assume you can easily figure out what the bit
+#should be by taking what the bit is, and XORing it with the "error"
 
 
 #inputs are N dimensional tensors of bytes
@@ -28,9 +27,9 @@ class XNOR(Function):
         ga = gb = None
 
         if ctx.needs_input_grad[0]:
-            ga = (b ^ grad_output) ^ 255
+            ga = grad_output
         if ctx.needs_input_grad[1]:
-            gb = (a ^ grad_output) ^ 255
+            gb = grad_output.clone()
         return ga, gb
 
 b_xnor = XNOR.apply
@@ -39,21 +38,21 @@ class AND(Function):
 
     @staticmethod
     def forward(ctx, a,b):
-        ctx.save_for_backward(a,b)
-        return a & b #definition of and
+        h= a & b
+        ctx.save_for_backward(a,b,h)
+        return h
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, gh):
 
-        a , b = ctx.saved_variables
+        a, b, h = ctx.saved_variables
         ga = gb = None
 
         if ctx.needs_input_grad[0]:
-            ga = grad_output
+            ga = ((h ^ a)^255) & gh
         if ctx.needs_input_grad[1]:
-            gb = grad_output
-
+            gb = ((h ^ b)^255) & gh
         return ga, gb
 b_and = AND.apply
 
@@ -61,21 +60,22 @@ class OR(Function):
 
     @staticmethod
     def forward(ctx, a,b):
-        ctx.save_for_backward(a,b)
-        return a | b #definition of or
+        h = a | b
+        ctx.save_for_backward(a,b,h)
+        return h
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, gh):
 
-        a , b = ctx.saved_variables
+        a, b, h = ctx.saved_variables
         
         ga = gb = None
 
         if ctx.needs_input_grad[0]:
-            ga = grad_output
+            ga = (h ^ a) & gh
         if ctx.needs_input_grad[1]:
-            gb = grad_output
+            gb = (h ^ b) & gh
 
         return ga, gb
 b_or = OR.apply
@@ -125,15 +125,14 @@ class SPLIT_AND(Function):
         return ga
 b_split_and = SPLIT_AND.apply
 
-#gives unreduced loss. gh = y because the intent is to get bits correct
-#regardless of what the network output.
+#gives reduced loss because pytorch whines when you don't return a scalar
 class XORLoss(Function):
 
     @staticmethod
     def forward(ctx, h, y):
-        ctx.save_for_backward(h,y)
         
         counts = popc(h ^ y)
+        ctx.save_for_backward(h,y)
         return torch.IntTensor([torch.sum(counts)])
 
     @staticmethod
@@ -141,12 +140,13 @@ class XORLoss(Function):
 
         h , y = ctx.saved_variables
         
+        #this ends up being computed twice but we don't care since it's so
+        #small and pytorch gets weird with saving intermediate values for backward
         gy = gh = None
-
         if ctx.needs_input_grad[0]:
-            gh = y
+            gh = y ^ h
         if ctx.needs_input_grad[1]:
-            gy = h
+            gy = h ^ y
 
         return gh , gy
 b_loss = XORLoss.apply
@@ -154,11 +154,13 @@ b_loss = XORLoss.apply
 #for testing gradients
 if __name__ == '__main__':
 
-    h = Parameter(torch.ByteTensor([1]), requires_grad=True)
-    y = Variable(torch.ByteTensor([3]), requires_grad=False)
+    h = Parameter(torch.ByteTensor([1]).cuda(), requires_grad=True)
+    y = Variable(torch.ByteTensor([3]).cuda(), requires_grad=False)
 
-    z = b_xnor(h,y)
-    z = b_loss(z,z)
+    z = b_and(h,y)
+    z = b_loss(z,Variable(torch.ByteTensor([3]).cuda()))
+    print(z)
     z.backward()
+    
 
     pass
