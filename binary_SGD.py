@@ -25,7 +25,14 @@ class B_SGD(Optimizer):
 
     def __setstate__(self, state):
         super().__setstate__(state)
-    
+   
+    def zero_grad(self):
+        for group in self.param_groups:
+            for p in group['params']: 
+                if p.grad is not None:
+                    p.grad.data = p.grad.data & 0
+                    #this is how you zero bit gradients
+
     def _get_max_flip(self,p):
         error = p.grad.data
 
@@ -44,7 +51,6 @@ class B_SGD(Optimizer):
             threshold = torch.max(counts)
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
         p.data = p.data ^ flip
-        p.grad.data = p.grad.data & 0
         #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
     
     #this sets bits based on "confidence". Doesn't care about actual value of p.data

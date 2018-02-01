@@ -191,7 +191,7 @@ if __name__ == '__main__':
         #same result, different code.
 
 
-        # optimizer.zero_grad()
+        optimizer.zero_grad()
         
         h = model(x)
         loss = bl.b_loss(h,y)
