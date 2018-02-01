@@ -62,7 +62,7 @@ class Regular_Binary(nn.Module):
         self.b22 = nn.Parameter(gen_rand_bits(width,0.5))
 
     def forward(self, x):
-        print(x)
+        # print(x)
         z1,z2 = bl.b_split_or(x)
         z1 = bl.b_xnor(z1,self.w11)
         z2 = bl.b_xnor(z2,self.w12)
@@ -119,7 +119,6 @@ class Net(nn.Module):
         x = self.layers(x)
         # x = bl.b_or(x,self.b1)
         # x = bl.b_and(x,self.b2)
-        print('-----------------------------------------------------------------')
         return x
 
 
@@ -167,9 +166,9 @@ class XORNet(nn.Module):
 
 if __name__ == '__main__':
     
-    model_width = 2**1
-    # model = Net(model_width,8)
-    model = XORNet()
+    model_width = 2**2
+    model = Net(model_width,3)
+    # model = XORNet()
     model = model.cuda()
 
     lr = 1

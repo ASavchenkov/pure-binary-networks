@@ -47,6 +47,7 @@ class B_SGD(Optimizer):
         error = p.grad.data
 
         counts = torch.sum(popc(error),dim = 0) #apply popc to get integer errors, sum over N
+        print(counts)
         if(not threshold):
             threshold = torch.max(counts)
         flip = torch.clamp(counts/threshold,0,1).byte()*255 #threshold and expand
