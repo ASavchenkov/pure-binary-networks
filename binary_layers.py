@@ -1,5 +1,6 @@
 import torch
 from torch.autograd import Function, Variable
+import torch.nn as nn
 from torch.nn import Parameter
 
 from popc_cuda import popc
@@ -150,6 +151,50 @@ class XORLoss(Function):
 
         return gh , gy
 b_loss = XORLoss.apply
+
+
+
+def gen_rand_bits(shape, prob1=0.5):
+    return (torch.rand(shape)+prob1).byte()*255
+
+#swaps along the channel dimension
+def swap(a):
+    mid = a.size(-1)//2
+    a = torch.cat((a[:,mid:],a[:,:mid]),dim=1)
+    return a
+
+def transpose2(a):
+    a = a.view(a.size(0),a.size(1)//2,2)
+    a = a.transpose(1,2)
+    a = a.contiguous().view(a.size(0),-1)
+    return a
+
+class Residual_Binary(nn.Module):
+    def __init__(self, width):
+        super().__init__()
+        self.w1 = nn.Parameter(gen_rand_bits(width))
+        self.w2 = nn.Parameter(gen_rand_bits(width))
+        
+        #start biases off at "do nothing"
+        self.b1 = nn.Parameter(gen_rand_bits(width,0.1))
+        self.b2 = nn.Parameter(gen_rand_bits(width,0.9))
+
+    def forward(self, x):
+        # print(x)
+        x,z = b_split_or(x)
+        z = b_xnor(z,self.w1)
+        z = b_and(z,self.b1)
+        z = swap(z)
+        x = b_or(x,z)
+ 
+        x,z = b_split_and(x)
+        z = b_xnor(z,self.w2)
+        z = b_or(z,self.b2)
+        z = swap(z)
+        x = b_and(x,z)
+
+        x = transpose2(x)
+        return x
 
 #for testing gradients
 if __name__ == '__main__':

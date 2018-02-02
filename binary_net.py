@@ -1,4 +1,7 @@
 import argparse
+
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,6 +11,8 @@ from torch.autograd import Variable
 
 
 from layers import Factorized_Linear, Factorized_BN
+
+import binary_layers as bl
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -39,19 +44,18 @@ train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('./data', train=True, download=True,
                    transform=transforms.Compose([
                        transforms.Pad(2),
-                       transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
+                       transforms.ToTensor()
                    ])),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST('./data', train=False, transform=transforms.Compose([
                        transforms.Pad(2),
-                       transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
+                       transforms.ToTensor()
                    ])),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
 
+#deals with getting bytes correct, and batching along bits
 
 class MLP(nn.Module):
     def __init__(self):
@@ -73,8 +77,31 @@ class MLP(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x)
 
+#be careful using this on labels, as that results in a bunch of
+#duplicates (octuplicates technically)
+def preprocess_binary_data(data):
+    data = data*255.9
+    data = data.byte()
+    data = data.numpy()
+
+    data = np.unpackbits(data, axis=1)
+    data = np.packbits(data, axis=0)
+    
+    data = torch.ByteTensor(data)
+    return data
 
 
+class binary_MLP(nn.Module):
+    def __init__(self,width, depth, end_width):
+        super().__init__()
+        self.end_width = end_width
+        self.layers = nn.Sequential(*[bl.Residual_Binary(width) for i in range(depth)])
+    
+    def forward(self, x):
+        x = self.layers(x)
+        #just chop off what you don't need. This should make zero gradients for every
+        #other output, making this a true "reduction" without much work
+        return x[:,:self.end_width]
 model = MLP()
 if args.cuda:
     model.cuda()
@@ -84,8 +111,12 @@ optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 def train(epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+
+        # data = preprocess_binary(data) #do this for binary variants
+        
         if args.cuda:
             data, target = data.cuda(), target.cuda()
+
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = model(data)

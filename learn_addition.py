@@ -62,15 +62,15 @@ class Regular_Binary(nn.Module):
         self.b22 = nn.Parameter(gen_rand_bits(width,0.5))
 
     def forward(self, x):
-        # print(x)
+        print(x)
         z1,z2 = bl.b_split_or(x)
         z1 = bl.b_xnor(z1,self.w11)
         z2 = bl.b_xnor(z2,self.w12)
         z2 = swap(z2)
         x = bl.b_or(z1,z2)
         # x = bl.b_and(z,self.b11)
- 
-        z1,z2 = bl.b_split_and(x)
+        print(x) 
+        z1,z2 = bl.b_split_or(x)
         z1 = bl.b_xnor(z1,self.w21)
         z2 = bl.b_xnor(z2,self.w22)
         z2 = swap(z2)
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
     last_loss = 0
-    for i in range(1000):
+    for i in range(1):
 
         xx, yy =    generate_data(2**3)
         xx, yy =    xx.cuda(), yy.cuda()
