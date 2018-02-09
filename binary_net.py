@@ -13,6 +13,7 @@ from torch.autograd import Variable
 from layers import Factorized_Linear, Factorized_BN
 
 import binary_layers as bl
+from binary_SGD import B_SGD
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -79,6 +80,7 @@ class MLP(nn.Module):
 
 #be careful using this on labels, as that results in a bunch of
 #duplicates (octuplicates technically)
+#currently we only work with single feature images
 def preprocess_binary_data(data):
     data = data*255.9
     data = data.byte()
@@ -90,29 +92,41 @@ def preprocess_binary_data(data):
     data = torch.ByteTensor(data)
     return data
 
+#this stuff comes in as integers.
+#we want one hot binary vectors.
+def preprocess_binary_target(target):
+    target = target.numpy()[:,np.newaxis]
+    classes = np.arange(16) #classes 10-16 not used
+    one_hot = np.equal(target,classes)
+    one_hot = np.packbits(one_hot,axis=0)
+    return torch.ByteTensor(one_hot)
 
 class binary_MLP(nn.Module):
-    def __init__(self,width, depth, end_width):
+    def __init__(self,width_log, depth):
         super().__init__()
-        self.end_width = end_width
-        self.layers = nn.Sequential(*[bl.Residual_Binary(width) for i in range(depth)])
+        self.layers = nn.Sequential(*[bl.Residual_Binary(2**width_log) for i in range(depth)])
     
     def forward(self, x):
+        x = x.view(x.size(0),32*32*8)
         x = self.layers(x)
-        #just chop off what you don't need. This should make zero gradients for every
-        #other output, making this a true "reduction" without much work
-        return x[:,:self.end_width]
-model = MLP()
+        #the output is just going to have to count shit
+        return x
+
+width_log = 5+5+3
+model = binary_MLP(width_log,24)
 if args.cuda:
     model.cuda()
 
-optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+# optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+optimizer = B_SGD(model.parameters())
 
 def train(epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
 
-        # data = preprocess_binary(data) #do this for binary variants
+        data = preprocess_binary_data(data) #do this for binary variants
+        target = preprocess_binary_target(target)
+        target = torch.cat([target]*(2**(width_log-4)),dim=1)
         
         if args.cuda:
             data, target = data.cuda(), target.cuda()
@@ -120,34 +134,35 @@ def train(epoch):
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+        loss = bl.b_loss(output, target)
         loss.backward()
-        optimizer.step()
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data[0]))
+        max_count, max_idx = optimizer.step()
+        print(loss.data.numpy()[0],max_count,max_idx)
+        # if batch_idx % args.log_interval == 0:
+            # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                # epoch, batch_idx * len(data), len(train_loader.dataset),
+                # 100. * batch_idx / len(train_loader), loss.data[0]))
 
-def test(epoch):
-    model.eval()
-    test_loss = 0
-    correct = 0
-    for data, target in test_loader:
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
-        output = model(data)
-        test_loss += F.nll_loss(output, target).data[0]
-        pred = output.data.max(1)[1] # get the index of the max log-probability
-        correct += pred.eq(target.data).cpu().sum()
+# def test(epoch):
+    # model.eval()
+    # test_loss = 0
+    # correct = 0
+    # for data, target in test_loader:
+        # if args.cuda:
+            # data, target = data.cuda(), target.cuda()
+        # data, target = Variable(data, volatile=True), Variable(target)
+        # output = model(data)
+        # test_loss += F.nll_loss(output, target).data[0]
+        # pred = output.data.max(1)[1] # get the index of the max log-probability
+        # correct += pred.eq(target.data).cpu().sum()
 
-    test_loss = test_loss
-    test_loss /= len(test_loader) # loss function already averages over batch size
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+    # test_loss = test_loss
+    # test_loss /= len(test_loader) # loss function already averages over batch size
+    # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        # test_loss, correct, len(test_loader.dataset),
+        # 100. * correct / len(test_loader.dataset)))
 
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
-    test(epoch)
+    # test(epoch)

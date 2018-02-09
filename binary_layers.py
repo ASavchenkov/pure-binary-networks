@@ -169,6 +169,7 @@ def transpose2(a):
     a = a.contiguous().view(a.size(0),-1)
     return a
 
+
 class Residual_Binary(nn.Module):
     def __init__(self, width):
         super().__init__()
@@ -176,11 +177,10 @@ class Residual_Binary(nn.Module):
         self.w2 = nn.Parameter(gen_rand_bits(width))
         
         #start biases off at "do nothing"
-        self.b1 = nn.Parameter(gen_rand_bits(width,0.1))
-        self.b2 = nn.Parameter(gen_rand_bits(width,0.9))
+        self.b1 = nn.Parameter(gen_rand_bits(width,0))
+        self.b2 = nn.Parameter(gen_rand_bits(width,1))
 
     def forward(self, x):
-        # print(x)
         x,z = b_split_or(x)
         z = b_xnor(z,self.w1)
         z = b_and(z,self.b1)
