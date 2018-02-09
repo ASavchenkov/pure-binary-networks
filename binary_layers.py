@@ -187,7 +187,7 @@ class Residual_Binary(nn.Module):
         z = swap(z)
         x = b_or(x,z)
  
-        x,z = b_split_and(x)
+        x,z = b_split_or(x)
         z = b_xnor(z,self.w2)
         z = b_or(z,self.b2)
         z = swap(z)
