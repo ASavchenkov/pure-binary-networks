@@ -11,6 +11,9 @@ from popc_cuda import popc
 #should be by taking what the bit is, and XORing it with the "error"
 
 
+def print_count(x):
+    print(torch.sum(popc(x)))
+
 #inputs are N dimensional tensors of bytes
 class XNOR(Function):
 
@@ -74,57 +77,66 @@ class OR(Function):
         ga = gb = None
 
         if ctx.needs_input_grad[0]:
-            ga = (h ^ a) & gh
+            ga = ((h ^ a)^255) & gh
         if ctx.needs_input_grad[1]:
-            gb = (h ^ b) & gh
+            gb = ((h ^ b)^255) & gh
 
         return ga, gb
 b_or = OR.apply
 
 #to make sure backprop uses binary OR/AND
 #instead of integer addition
+#also needs to go through another function
+#to split into variables because pytorch apparently can't handle multiple
+#gradient inputs into a function once view() gets called -.-
 class SPLIT_OR(Function):
 
     @staticmethod
     def forward(ctx, a):
         ctx.save_for_backward(a)
-        return a, a.clone()
+        return torch.stack((a,a),len(a.size()))
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod
-    def backward(ctx, grad_output_1, grad_output_2):
-
+    def backward(ctx, grad_output):
         a, = ctx.saved_variables
         
         ga = None
 
         if ctx.needs_input_grad[0]:
+            grad_output_1, grad_output_2 =  torch.unbind(grad_output,dim=-1)
             ga = grad_output_1 | grad_output_2
 
         return ga
-b_split_or = SPLIT_OR.apply
 
-#same thing as with OR. This is to provide balance to the force
+
+def b_split_or(a):
+    return torch.unbind(SPLIT_OR.apply(a),dim=-1)
+
+#same thing as with OR. This is to bring balance to the force
 class SPLIT_AND(Function):
 
     @staticmethod
     def forward(ctx, a):
         ctx.save_for_backward(a)
-        return a, a.clone()
+        #this gets passed into a function that splits it into 2 variables 
+        return torch.stack((a,a),len(a.size()))
 
     # This gradient is actually the solution since it's a binary output
     @staticmethod
-    def backward(ctx, grad_output_1, grad_output_2):
-
+    def backward(ctx, grad_output):
         a, = ctx.saved_variables
         
         ga = None
 
         if ctx.needs_input_grad[0]:
+            grad_output_1, grad_output_2 =  torch.unbind(grad_output,dim=-1)
             ga = grad_output_1 & grad_output_2
 
         return ga
-b_split_and = SPLIT_AND.apply
+
+def b_split_and(a):
+    return torch.unbind(SPLIT_AND.apply(a),dim=-1)
 
 #gives reduced loss because pytorch whines when you don't return a scalar
 class XORLoss(Function):
@@ -181,17 +193,19 @@ class Residual_Binary(nn.Module):
         self.b2 = nn.Parameter(gen_rand_bits(width,1))
 
     def forward(self, x):
-        x,z = b_split_or(x)
+        x,z = b_split_and(x)
         z = b_xnor(z,self.w1)
         z = b_and(z,self.b1)
         z = swap(z)
         x = b_or(x,z)
  
-        x,z = b_split_or(x)
+        x,z = b_split_and(x)
         z = b_xnor(z,self.w2)
         z = b_or(z,self.b2)
         z = swap(z)
         x = b_and(x,z)
+        x.register_hook(print_count)
+
 
         x = transpose2(x)
         return x

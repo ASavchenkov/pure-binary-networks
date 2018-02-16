@@ -15,6 +15,9 @@ from layers import Factorized_Linear, Factorized_BN
 import binary_layers as bl
 from binary_SGD import B_SGD
 
+from graphviz import Digraph
+
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -112,8 +115,24 @@ class binary_MLP(nn.Module):
         #the output is just going to have to count shit
         return x
 
+class split_test(nn.Module):
+    def __init__(self, width_log, depth):
+        super().__init__()
+        self.layers = nn.Sequential(*[bl.Residual_Binary(2**width_log) for i in range(depth)])
+    
+    def forward(self, x):
+        x.requires_grad = True
+        # x = x.view(x.size(0),32*32*8)
+        a,b = bl.b_split_or(x)
+        a.register_hook(bl.print_count)
+        b.register_hook(bl.print_count)
+        x = bl.b_and(a,b)
+        return x
+
+
 width_log = 5+5+3
-model = binary_MLP(width_log,24)
+model = binary_MLP(width_log,4)
+# model = split_test(width_log,1)
 if args.cuda:
     model.cuda()
 
@@ -125,19 +144,20 @@ def train(epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
 
         data = preprocess_binary_data(data) #do this for binary variants
+        data = data.view(data.size(0),32*32*8)
         target = preprocess_binary_target(target)
         target = torch.cat([target]*(2**(width_log-4)),dim=1)
         
         if args.cuda:
             data, target = data.cuda(), target.cuda()
 
-        data, target = Variable(data), Variable(target)
+        data, target = Variable(data,requires_grad=True), Variable(target)
         optimizer.zero_grad()
         output = model(data)
         loss = bl.b_loss(output, target)
         loss.backward()
         max_count, max_idx = optimizer.step()
-        print(loss.data.numpy()[0],max_count,max_idx)
+        print('----------------',loss.data.numpy()[0],max_count,max_idx, '----------------------')
         # if batch_idx % args.log_interval == 0:
             # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 # epoch, batch_idx * len(data), len(train_loader.dataset),

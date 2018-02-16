@@ -16,6 +16,8 @@ def gen_rand_bits(shape):
 
 x = Parameter(torch.ByteTensor([8 + 32]).cuda())
 y = Parameter(torch.ByteTensor([4 + 8]).cuda())
+x = x.view(x.size())
+y = y.view(x.size())
 x1,x2 = bl.b_split_and(x)
 y1,y2 = bl.b_split_and(y)
 a = bl.b_and(x1,y1)
@@ -26,6 +28,6 @@ a.register_hook(print)
 b.register_hook(print)
 x.register_hook(print)
 y.register_hook(print)
+print(h)
 h.backward()
 
-print(h)

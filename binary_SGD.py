@@ -83,7 +83,7 @@ class B_SGD(Optimizer):
                     continue
 
                 this_max = self._get_max_flip(p)
-                print(this_max)
+                # print(this_max)
                 if(this_max>max_count):
                     max_count = this_max 
                     max_idx = i
