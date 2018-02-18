@@ -193,15 +193,18 @@ class Residual_Binary(nn.Module):
         self.b2 = nn.Parameter(gen_rand_bits(width,1))
 
     def forward(self, x):
-        x,z = b_split_and(x)
+        x,z = b_split_or(x)
         z = b_xnor(z,self.w1)
         z = b_and(z,self.b1)
         z = swap(z)
         x = b_or(x,z)
- 
-        x,z = b_split_and(x)
+        x.register_hook(print_count) 
+        x,z = b_split_or(x)
+        z.register_hook(print_count)
         z = b_xnor(z,self.w2)
+        z.register_hook(print_count)
         z = b_or(z,self.b2)
+        z.register_hook(print_count)
         z = swap(z)
         x = b_and(x,z)
         x.register_hook(print_count)

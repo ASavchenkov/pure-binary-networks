@@ -15,8 +15,7 @@ from layers import Factorized_Linear, Factorized_BN
 import binary_layers as bl
 from binary_SGD import B_SGD
 
-from graphviz import Digraph
-
+import time
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -158,6 +157,7 @@ def train(epoch):
         loss.backward()
         max_count, max_idx = optimizer.step()
         print('----------------',loss.data.numpy()[0],max_count,max_idx, '----------------------')
+        time.sleep(0.5)
         # if batch_idx % args.log_interval == 0:
             # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 # epoch, batch_idx * len(data), len(train_loader.dataset),
