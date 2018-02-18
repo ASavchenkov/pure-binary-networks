@@ -181,6 +181,29 @@ def transpose2(a):
     a = a.contiguous().view(a.size(0),-1)
     return a
 
+class Regular_Binary(nn.Module):
+    def __init__(self, width):
+        super().__init__()
+        self.split = width//2
+        self.w1 = nn.Parameter(gen_rand_bits(width))
+        self.w2 = nn.Parameter(gen_rand_bits(width))
+        
+        self.b1 = nn.Parameter(gen_rand_bits(width,0.5))
+        # self.b2 = nn.Parameter(gen_rand_bits(width,1))
+
+    def forward(self, x):
+        z1, z2 = b_split_or(x)
+        z1 = b_xnor(z1, self.w1)
+        z2 = b_xnor(z2, self.w2)
+
+        z_left = b_and(z1[:,:self.split], z2[:,:self.split])
+        z_right = b_and(z1[:,self.split:], z2[:,self.split:])
+        z = torch.cat((z_left,z_right),dim=1)
+
+        z = b_and(z,self.b1)
+        # z.register_hook(print_count)
+
+        return z
 
 class Residual_Binary(nn.Module):
     def __init__(self, width):

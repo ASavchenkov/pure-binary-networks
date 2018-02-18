@@ -117,7 +117,7 @@ class binary_MLP(nn.Module):
 class split_test(nn.Module):
     def __init__(self, width_log, depth):
         super().__init__()
-        self.layers = nn.Sequential(*[bl.Residual_Binary(2**width_log) for i in range(depth)])
+        self.layers = nn.Sequential(*[bl.Regular_Binary(2**width_log) for i in range(depth)])
     
     def forward(self, x):
         x.requires_grad = True
