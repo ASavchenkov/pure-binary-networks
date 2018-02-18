@@ -192,6 +192,7 @@ class Regular_Binary(nn.Module):
         # self.b2 = nn.Parameter(gen_rand_bits(width,1))
 
     def forward(self, x):
+        
         z1, z2 = b_split_or(x)
         z1 = b_xnor(z1, self.w1)
         z2 = b_xnor(z2, self.w2)
@@ -199,9 +200,7 @@ class Regular_Binary(nn.Module):
         z_left = b_and(z1[:,:self.split], z2[:,:self.split])
         z_right = b_and(z1[:,self.split:], z2[:,self.split:])
         z = torch.cat((z_left,z_right),dim=1)
-
         z = b_and(z,self.b1)
-        # z.register_hook(print_count)
 
         return z
 
@@ -221,16 +220,11 @@ class Residual_Binary(nn.Module):
         z = b_and(z,self.b1)
         z = swap(z)
         x = b_or(x,z)
-        x.register_hook(print_count) 
         x,z = b_split_or(x)
-        z.register_hook(print_count)
         z = b_xnor(z,self.w2)
-        z.register_hook(print_count)
         z = b_or(z,self.b2)
-        z.register_hook(print_count)
         z = swap(z)
         x = b_and(x,z)
-        x.register_hook(print_count)
 
 
         x = transpose2(x)

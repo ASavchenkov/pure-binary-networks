@@ -30,8 +30,8 @@ class B_SGD(Optimizer):
         for group in self.param_groups:
             for p in group['params']: 
                 if p.grad is not None:
-                    p.grad.data = p.grad.data & 0
-                    #this is how you zero bit gradients
+                    # p.grad.data = p.grad.data & 0
+                    p.grad = None
 
     def _get_max_flip(self,p):
         error = p.grad.data
