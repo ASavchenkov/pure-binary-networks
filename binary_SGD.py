@@ -63,9 +63,10 @@ class B_SGD(Optimizer):
         # max_count = error.size(0)*8
         counts = torch.sum(popc(error),dim=0).float()
         mean_count = torch.mean(counts)
-        flip_probs = (counts/mean_count)**2 * self.lr
-        flip = torch.bernoulli(flip_probs).byte()*255 #this should be mostly zeroes
-        p.data = p.data ^ flip
+        if(mean_count>0): #don't want to divide by zero and there's no point anyways
+            flip_probs = (counts/mean_count) * self.lr
+            flip = torch.bernoulli(flip_probs).byte()*255 #this should be mostly zeroes
+            p.data = p.data ^ flip
         
     #this sets bits based on "confidence". Doesn't care about actual value of p.data
     #the most theoretically pure one, since the other one technically uses a second

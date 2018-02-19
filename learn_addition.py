@@ -166,18 +166,18 @@ class XORNet(nn.Module):
 
 if __name__ == '__main__':
     
-    model_width = 2**2
-    model = Net(model_width,3)
-    # model = XORNet()
+    model_width = 2**1
+    # model = Net(model_width,3)
+    model = XORNet()
     model = model.cuda()
 
     lr = 1
     optimizer = B_SGD(model.parameters(),lr = lr) #lr is again related to batch size
 
     last_loss = 0
-    for i in range(1):
+    for i in range(1000):
 
-        xx, yy =    generate_data(2**3)
+        xx, yy =    generate_data(2**1)
         xx, yy =    xx.cuda(), yy.cuda()
         x = torch.cat([xx]*(model_width//2),dim = 1)
         y = torch.cat([yy]*(model_width//2), dim = 1)

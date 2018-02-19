@@ -20,7 +20,6 @@ class XNOR(Function):
     @staticmethod
     def forward(ctx, a, b):
         ctx.save_for_backward(a,b)
-        
         out  = (a ^ b) ^ 255 #definition of xnor. Use xnor with 255 to do not
         return out
 
@@ -165,6 +164,34 @@ class XORLoss(Function):
 b_loss = XORLoss.apply
 
 
+#takes in loads of binary inputs, outputs floating point sum
+#along extra "voting" axis
+#backpropagates stochastically based off of the gradient.
+#(gradients in define bernoulli probability)
+class Voting_PopC(Function)
+    @staticmethod
+    def forward(ctx, h, y):
+         
+        counts = popc(h ^ y)
+        ctx.save_for_backward(h,y)
+        return torch.IntTensor([torch.sum(counts)])
+
+    @staticmethod
+    def backward(ctx, grad_output):
+
+        h , y = ctx.saved_variables
+        
+        #this ends up being computed twice but we don't care since it's so
+        #small and pytorch gets weird with saving intermediate values for backward
+        gy = gh = None
+        if ctx.needs_input_grad[0]:
+            gh = y ^ h
+        if ctx.needs_input_grad[1]:
+            gy = h ^ y
+
+        return gh , gy
+
+b_voting = Voting_PopC.apply
 
 def gen_rand_bits(shape, prob1=0.5):
     return (torch.rand(shape)+prob1).byte()*255
