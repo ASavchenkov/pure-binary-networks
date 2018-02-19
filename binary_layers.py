@@ -182,9 +182,10 @@ def transpose2(a):
     return a
 
 class Regular_Binary(nn.Module):
-    def __init__(self, width):
+    def __init__(self, width, reduce_func = b_and):
         super().__init__()
         self.split = width//2
+        self.reduce_func = reduce_func #use or instead of and for forward sometimes
         self.w1 = nn.Parameter(gen_rand_bits(width))
         self.w2 = nn.Parameter(gen_rand_bits(width))
         
@@ -192,16 +193,15 @@ class Regular_Binary(nn.Module):
         # self.b2 = nn.Parameter(gen_rand_bits(width,1))
 
     def forward(self, x):
-        
         z1, z2 = b_split_or(x)
         z1 = b_xnor(z1, self.w1)
         z2 = b_xnor(z2, self.w2)
 
-        z_left = b_and(z1[:,:self.split], z2[:,:self.split])
-        z_right = b_and(z1[:,self.split:], z2[:,self.split:])
+        z_left = self.reduce_func(z1[:,:self.split], z2[:,:self.split])
+        z_right = self.reduce_func(z1[:,self.split:], z2[:,self.split:])
         z = torch.cat((z_left,z_right),dim=1)
         z = b_and(z,self.b1)
-
+        
         return z
 
 class Residual_Binary(nn.Module):

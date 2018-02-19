@@ -13,12 +13,17 @@ class B_SGD(Optimizer):
         >>> loss_fn(model(input), target).backward()
         >>> optimizer.step()
 
-
-    lr defines percentage correct below which a bit is flipped
-    don't ever make it 0.5 or higher. That makes the network "unlearn"
+    
+    lr works differently for bits. We calculate how far from "maximum"
+    the error of a bit is, then we turn that into a ratio. This is the
+    base probability of a bit being flipped. It is then multiplied by lr.
+    Thus, lr linearly correlates to how many bits are flipped per iteration,
+    but doesn't necessarily define a specific proportion of bits to be flipped
+    at every iteration. (This depends on the performance of the network and
+    efficacy of gradient propagation techniques.)
     """
 
-    def __init__(self, params, lr=1):
+    def __init__(self, params, lr=0.001):
         self.lr = lr
         defaults = dict(lr=lr)
         super().__init__(params, defaults)
@@ -53,6 +58,14 @@ class B_SGD(Optimizer):
         p.data = p.data ^ flip
         #XOR'l flip ya. flip ya fo real. *tap tap tap* Can ya hear me in the back?
     
+    def _set_stochastically_(self,p):
+        error = p.grad.data
+        max_count = error.size(0)*8
+        counts = torch.sum(popc(error),dim=0).float()
+        flip_probs = (counts/max_count)**2 * self.lr
+        flip = torch.bernoulli(flip_probs).byte()*255 #this should be mostly zeroes
+        p.data = p.data ^ flip
+        
     #this sets bits based on "confidence". Doesn't care about actual value of p.data
     #the most theoretically pure one, since the other one technically uses a second
     #bit since it has access to the original value.
@@ -68,6 +81,7 @@ class B_SGD(Optimizer):
         mask0 = torch.clamp(counts/threshold,0,1).byte()*255 #should be few zeroes
         mask1 = torch.clamp(counts/(max_count-threshold),0,1).byte()*255 #should be few ones
         p.data = (p.data  & mask0 ) | mask1 #sets the selected bits to selected values
+
 
 
     def step(self):
@@ -95,7 +109,7 @@ class B_SGD(Optimizer):
             for p in group['params']:
                 if p.grad is None:
                     continue
-
-                self._set_by_error(p,max_count)
+                self._set_stochastically_(p)
+                # self._set_by_error(p,max_count)
         
         return max_count,max_idx

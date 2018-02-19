@@ -106,18 +106,19 @@ def preprocess_binary_target(target):
 class binary_MLP(nn.Module):
     def __init__(self,width_log, depth):
         super().__init__()
+        self.width_log = width_log
         self.layers = nn.Sequential(*[bl.Regular_Binary(2**width_log) for i in range(depth)])
     
     def forward(self, x):
-        x = x.view(x.size(0),32*32*8)
+        x = x.view(x.size(0),2**self.width_log)
         x = self.layers(x)
         #the output is just going to have to count shit
         return x
 
 
 
-width_log = 5+5+3
-model = binary_MLP(width_log,1)
+width_log = 15
+model = binary_MLP(width_log,15)
 # model = split_test(width_log,1)
 if args.cuda:
     model.cuda()
@@ -131,6 +132,7 @@ def train(epoch):
 
         data = preprocess_binary_data(data) #do this for binary variants
         data = data.view(data.size(0),32*32*8)
+        data = torch.cat([data]*(2**(width_log-13)),dim=1)
         target = preprocess_binary_target(target)
         target = torch.cat([target]*(2**(width_log-4)),dim=1)
         
@@ -144,7 +146,7 @@ def train(epoch):
         loss.backward()
         max_count, max_idx = optimizer.step()
         print('----------------',loss.data.numpy()[0],max_count,max_idx, '----------------------')
-        time.sleep(0.5)
+        # time.sleep(0.5)
         # if batch_idx % args.log_interval == 0:
             # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 # epoch, batch_idx * len(data), len(train_loader.dataset),
