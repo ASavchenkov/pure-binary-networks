@@ -23,7 +23,7 @@ class B_SGD(Optimizer):
     efficacy of gradient propagation techniques.)
     """
 
-    def __init__(self, params, lr=0.001):
+    def __init__(self, params, lr=0.0001):
         self.lr = lr
         defaults = dict(lr=lr)
         super().__init__(params, defaults)
@@ -60,9 +60,10 @@ class B_SGD(Optimizer):
     
     def _set_stochastically_(self,p):
         error = p.grad.data
-        max_count = error.size(0)*8
+        # max_count = error.size(0)*8
         counts = torch.sum(popc(error),dim=0).float()
-        flip_probs = (counts/max_count)**2 * self.lr
+        mean_count = torch.mean(counts)
+        flip_probs = (counts/mean_count)**2 * self.lr
         flip = torch.bernoulli(flip_probs).byte()*255 #this should be mostly zeroes
         p.data = p.data ^ flip
         
