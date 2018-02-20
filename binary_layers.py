@@ -166,30 +166,28 @@ b_loss = XORLoss.apply
 
 #takes in loads of binary inputs, outputs floating point sum
 #along extra "voting" axis
-#backpropagates stochastically based off of the gradient.
+#backpropagates stochastically based off of the normalized gradient.
 #(gradients in define bernoulli probability)
 class Voting_PopC(Function)
     @staticmethod
-    def forward(ctx, h, y):
+    def forward(ctx, h):
          
-        counts = popc(h ^ y)
-        ctx.save_for_backward(h,y)
-        return torch.IntTensor([torch.sum(counts)])
+        ctx.save_for_backward(h)
+        counts = popc(h)
+        counts = torch.sum(x,-1).float()
+        return counts
 
     @staticmethod
     def backward(ctx, grad_output):
 
-        h , y = ctx.saved_variables
+        h = ctx.saved_variables
+
+        gh = None 
         
-        #this ends up being computed twice but we don't care since it's so
-        #small and pytorch gets weird with saving intermediate values for backward
-        gy = gh = None
         if ctx.needs_input_grad[0]:
             gh = y ^ h
-        if ctx.needs_input_grad[1]:
-            gy = h ^ y
 
-        return gh , gy
+        return gh
 
 b_voting = Voting_PopC.apply
 
