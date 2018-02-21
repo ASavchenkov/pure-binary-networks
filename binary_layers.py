@@ -2,8 +2,11 @@ import torch
 from torch.autograd import Function, Variable
 import torch.nn as nn
 from torch.nn import Parameter
-
+import torch.nn.functional as F
 from popc_cuda import popc
+
+import numpy as np
+#numpy needed for loss function to work.
 
 #For the sake of intuition, gradients are passed back not as a gradient
 #but as "error", meaning the bits getting passed back are whether or not
@@ -165,22 +168,35 @@ b_loss = XORLoss.apply
 
 
 #takes in loads of binary inputs, outputs floating point sum
-#along extra "voting" axis
+#(along "voting" axis (the last extra axis))
 #backpropagates stochastically based off of the normalized gradient.
-#(gradients in define bernoulli probability)
+#that comes in (gradients are defined by bernoulli probability)
+#also unfortunately requires numpy 
 class Voting_PopC(Function)
     @staticmethod
     def forward(ctx, h):
          
         ctx.save_for_backward(h)
-        counts = popc(h)
-        counts = torch.sum(x,-1).float()
-        return counts
+        max_count = h.size(-1)
+        h = h.cpu().numpy()
+        h = np.unpackbits(h,0) #unpack into the batch dimension
+        counts = np.count_nonzero(h,axis=-2)-(max_count//2) #this is the 'voting' dimension 
+        return torch.from_numpy(counts).cuda()
 
+    #grad_output is a floating point thingy
     @staticmethod
     def backward(ctx, grad_output):
 
         h = ctx.saved_variables
+     
+        #normalize but don't screw with the mean.
+        grad_output = grad_output / grad_output.std()
+        #sigmoid behaves pretty similarly to the cdf of a normal distribution
+        #so we use it to generate probabilities.
+        probabilities = F.sigmoid(grad_output)
+        probabilities = probabilities.view(probabilities.size(0)//8,8,-1)
+        probabilities = probabilities.expand(-1,-1,-1,h.size(-1))#expand voting dimension
+
 
         gh = None 
         
