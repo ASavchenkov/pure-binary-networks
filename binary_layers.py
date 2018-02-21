@@ -172,7 +172,7 @@ b_loss = XORLoss.apply
 #backpropagates stochastically based off of the normalized gradient.
 #that comes in (gradients are defined by bernoulli probability)
 #also unfortunately requires numpy 
-class Voting_PopC(Function)
+class Voting_PopC(Function):
     @staticmethod
     def forward(ctx, h):
          
@@ -180,28 +180,42 @@ class Voting_PopC(Function)
         max_count = h.size(-1)
         h = h.cpu().numpy()
         h = np.unpackbits(h,0) #unpack into the batch dimension
-        counts = np.count_nonzero(h,axis=-2)-(max_count//2) #this is the 'voting' dimension 
-        return torch.from_numpy(counts).cuda()
+        counts = np.count_nonzero(h,axis=-1)-(max_count//2) #this is the 'voting' dimension 
+        return torch.from_numpy(counts).cuda().float()
 
     #grad_output is a floating point thingy
     @staticmethod
     def backward(ctx, grad_output):
 
-        h = ctx.saved_variables
+        h, = ctx.saved_variables
      
-        #normalize but don't screw with the mean.
-        grad_output = grad_output / grad_output.std()
+        #normalize and make negative but don't screw with the mean.
+        grad_output = -grad_output / grad_output.std()
         #sigmoid behaves pretty similarly to the cdf of a normal distribution
-        #so we use it to generate probabilities.
+        #so we use it to generate probabilities for setting bits.
+        #since this describes a solution and not gradient, we negate grad_output
         probabilities = F.sigmoid(grad_output)
-        probabilities = probabilities.view(probabilities.size(0)//8,8,-1)
-        probabilities = probabilities.expand(-1,-1,-1,h.size(-1))#expand voting dimension
-
-
-        gh = None 
+        probabilities = probabilities.unsqueeze(2)
+        probabilities = probabilities.expand(-1,-1,h.size(-1))#expand voting dimension
         
-        if ctx.needs_input_grad[0]:
-            gh = y ^ h
+        probabilities = probabilities.data.cpu().numpy()
+        h = h.data.cpu().numpy()
+        h = h
+        h = np.unpackbits(h,0) #probabilities should have the same shape as h now.
+        
+        #prob->1 means flip zeroes towards 1, prob->0 means flip 1s toward zeroes
+        print(h)
+        print(probabilities)
+        flip_probs = (probabilities * (1-h)) + ((1-probabilities)*h)
+        print('flip_probs')
+        print(flip_probs)
+        #these are the actual gradients
+        flips = np.random.binomial(n=1,p=flip_probs)
+        #now we convert them back to bytes to send as gradients
+        flips = np.packbits(flips,0)
+        flips = torch.from_numpy(flips).cuda()
+       
+        gh = flips
 
         return gh
 
@@ -274,13 +288,14 @@ class Residual_Binary(nn.Module):
 #for testing gradients
 if __name__ == '__main__':
 
-    h = Parameter(torch.ByteTensor([1]).cuda(), requires_grad=True)
-    y = Variable(torch.ByteTensor([3]).cuda(), requires_grad=False)
-
-    z = b_and(h,y)
-    z = b_loss(z,Variable(torch.ByteTensor([3]).cuda()))
-    print(z)
-    z.backward()
+    z = Parameter(torch.ByteTensor([1,2,3,4,5,6,7,12]).cuda().view(1,2,4), requires_grad=True)
+    y = Variable(torch.LongTensor([1]*8).cuda().view(8), requires_grad=False)
+    criterion = nn.CrossEntropyLoss()
+    
+    h = b_voting(z)
+    h.register_hook(print)
+    loss = criterion(h,y)
+    loss.backward()
     
 
     pass
