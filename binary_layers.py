@@ -191,10 +191,11 @@ class Voting_PopC(Function):
      
         #normalize and make negative but don't screw with the mean.
         grad_output = -grad_output / grad_output.std()
-        #sigmoid behaves pretty similarly to the cdf of a normal distribution
-        #so we use it to generate probabilities for setting bits.
-        #since this describes a solution and not gradient, we negate grad_output
-        probabilities = F.sigmoid(grad_output)
+        #so why use tanh instead of a real cdf?
+        #Because magnitude defines probability, but direction
+        #defines which bits need to be corrected. (the zeroes or the ones)
+        #a CDF would work in a "solution" gradient framework.
+        probabilities = F.tanh(grad_output)
         probabilities = probabilities.unsqueeze(2)
         probabilities = probabilities.expand(-1,-1,h.size(-1))#expand voting dimension
         
@@ -207,7 +208,8 @@ class Voting_PopC(Function):
         print(h)
         print(probabilities)
         flip_probs = (probabilities * (1-h)) + ((1-probabilities)*h)
-        print('flip_probs')
+        print('------------flip_probs------------------')
+        print()
         print(flip_probs)
         #these are the actual gradients
         flips = np.random.binomial(n=1,p=flip_probs)
