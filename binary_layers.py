@@ -204,21 +204,16 @@ class Voting_PopC(Function):
         h = h
         h = np.unpackbits(h,0) #probabilities should have the same shape as h now.
         
-        #prob->1 means flip zeroes towards 1, prob->0 means flip 1s toward zeroes
-        print(h)
-        print(probabilities)
-        flip_probs = (probabilities * (1-h)) + ((1-probabilities)*h)
-        print('------------flip_probs------------------')
-        print()
-        print(flip_probs)
+        #positive means flip zero bits a lot.
+        flip_probs = (np.clip(probabilities,0,None) * (1-h)) + ((np.clip(-probabilities, 0, None))*h)
         #these are the actual gradients
         flips = np.random.binomial(n=1,p=flip_probs)
         #now we convert them back to bytes to send as gradients
         flips = np.packbits(flips,0)
         flips = torch.from_numpy(flips).cuda()
+        
        
-        gh = flips
-
+        gh = Variable(flips)
         return gh
 
 b_voting = Voting_PopC.apply
