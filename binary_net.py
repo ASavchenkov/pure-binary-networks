@@ -128,24 +128,33 @@ optimizer = B_SGD(model.parameters())
 
 def train(epoch):
     model.train()
+    correct = 0
     for batch_idx, (data, target) in enumerate(train_loader):
 
         data = preprocess_binary_data(data) #do this for binary variants
         data = data.view(data.size(0),32*32*8)
         data = torch.cat([data]*(2**(width_log-13)),dim=1)
-        target = preprocess_binary_target(target)
-        target = torch.cat([target]*(2**(width_log-4)),dim=1)
+        # target = preprocess_binary_target(target)
+        # target = torch.cat([target]*(2**(width_log-4)),dim=1)
         
         if args.cuda:
             data, target = data.cuda(), target.cuda()
 
         data, target = Variable(data,requires_grad=True), Variable(target)
         optimizer.zero_grad()
+
         output = model(data)
-        loss = bl.b_loss(output, target)
+        output = output.view(output.size(0),16, output.size(1)//16)#this is the voting dimension
+        output = bl.b_voting(output)
+
+        loss = F.cross_entropy(output,target)
         loss.backward()
         max_count, max_idx = optimizer.step()
-        print('----------------',loss.data.numpy()[0],max_count,max_idx, '----------------------')
+
+        pred = output.data.max(1)[1] # get the index of the max log-probability
+        correct += pred.eq(target.data).cpu().sum() 
+        print(correct/((batch_idx+1)*args.batch_size)) 
+        print('----------------',loss.cpu().data.numpy()[0],max_count,max_idx, '----------------------')
         # time.sleep(0.5)
         # if batch_idx % args.log_interval == 0:
             # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
