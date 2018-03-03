@@ -84,14 +84,15 @@ class MLP(nn.Module):
 #duplicates (octuplicates technically)
 #currently we only work with single feature images
 def preprocess_binary_data(data):
-    data = data*255.9
+    data = data*1.9
     data = data.byte()
     data = data.numpy()
 
     data = np.unpackbits(data, axis=1)
     data = np.packbits(data, axis=0)
+    # print(np.mean(data,axis=(0,2,3)))
     
-    data = torch.ByteTensor(data)
+    data = torch.ByteTensor(data[:,7:,:,:])
     return data
 
 #this stuff comes in as integers.
@@ -117,7 +118,7 @@ class binary_MLP(nn.Module):
 
 
 
-width_log = 15
+width_log = 12
 model = binary_MLP(width_log,30)
 # model = split_test(width_log,1)
 if args.cuda:
@@ -131,9 +132,9 @@ def train(epoch):
     correct = 0
     for batch_idx, (data, target) in enumerate(train_loader):
 
-        data = preprocess_binary_data(data) #do this for binary variants
-        data = data.view(data.size(0),32*32*8)
-        data = torch.cat([data]*(2**(width_log-13)),dim=1)
+        data = preprocess_binary_data(data).contiguous() #do this for binary variants
+        data = data.view(data.size(0),32*32)
+        data = torch.cat([data]*(2**(width_log-10)),dim=1)
         # target = preprocess_binary_target(target)
         # target = torch.cat([target]*(2**(width_log-4)),dim=1)
         

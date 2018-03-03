@@ -17,6 +17,10 @@ import numpy as np
 def print_count(x):
     print(torch.sum(popc(x)))
 
+def print_count_or(a):
+    split = a.size(1)//2
+    print_count(a[:,:split] | a[:,split:])
+
 #inputs are N dimensional tensors of bytes
 class XNOR(Function):
 
@@ -233,6 +237,8 @@ def transpose2(a):
     a = a.contiguous().view(a.size(0),-1)
     return a
 
+
+
 class Regular_Binary(nn.Module):
     def __init__(self, width, reduce_func = b_and):
         super().__init__()
@@ -249,11 +255,13 @@ class Regular_Binary(nn.Module):
         z1 = b_xnor(z1, self.w1)
         z2 = b_xnor(z2, self.w2)
 
-        z_left = self.reduce_func(z1[:,:self.split], z2[:,:self.split])
-        z_right = self.reduce_func(z1[:,self.split:], z2[:,self.split:])
+        z_left = self.reduce_func(z1[:,:self.split], z2[:,self.split:])
+        z_right = self.reduce_func(z1[:,self.split:], z2[:,:self.split])
         z = torch.cat((z_left,z_right),dim=1)
         z = b_and(z,self.b1)
-        
+
+        z = transpose2(z)
+        z.register_hook(print_count)
         return z
 
 class Residual_Binary(nn.Module):
@@ -277,7 +285,6 @@ class Residual_Binary(nn.Module):
         z = b_or(z,self.b2)
         z = swap(z)
         x = b_and(x,z)
-
 
         x = transpose2(x)
         return x
