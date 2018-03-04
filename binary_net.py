@@ -154,6 +154,7 @@ def train(epoch):
 
         pred = output.data.max(1)[1] # get the index of the max log-probability
         correct += pred.eq(target.data).cpu().sum() 
+        print(np.bincount(pred.cpu().numpy()))
         print(correct/((batch_idx+1)*args.batch_size)) 
         print('----------------',loss.cpu().data.numpy()[0],max_count,max_idx, '----------------------')
         # time.sleep(0.5)
