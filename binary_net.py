@@ -119,10 +119,25 @@ class binary_MLP(nn.Module):
         return x
 
 
+class two_layer_MLP(nn.Module):
+    def __init__(self,width_log, ):
+        super().__init__()
+        self.width_log = width_log
+        self.l1 = bl.Regular_Binary(2**width_log)
+        self.l2 = bl.Basic_Binary_Linear(2**width_log)
+        
+    
+    def forward(self, x):
+        x = x.view(x.size(0),2**self.width_log)
+        x = self.l1(x)
+        x = self.l2(x)
+        #the output is just going to have to count shit
+        return x
 
 width_log = 14
 # model = binary_MLP(width_log,30)
-model = bl.Basic_Binary_Linear(2**width_log)
+# model = bl.Basic_Binary_Linear(2**width_log)
+model = two_layer_MLP(width_log)
 if args.cuda:
     model.cuda()
 
@@ -136,7 +151,11 @@ def train(epoch):
 
         data = preprocess_binary_data(data).contiguous() #do this for binary variants
         data = data.view(data.size(0),32*32)
-        data = torch.cat([data]*(2**(width_log-10)),dim=1)
+
+        # data = torch.cat([data]*(2**(width_log-10)),dim=1)
+        data = torch.stack([data]*(2**(width_log-10)),dim=2)
+        data = data.view(data.size(0),(data.size(1)*data.size(2))) #this interleaves data
+
         # target = preprocess_binary_target(target)
         # target = torch.cat([target]*(2**(width_log-4)),dim=1)
         
@@ -147,7 +166,8 @@ def train(epoch):
         optimizer.zero_grad()
 
         output = model(data)
-        output = output.view(output.size(0),16, output.size(1)//16)#this is the voting dimension
+        output = output.view(output.size(0),output.size(1)//16, 16)#this is the voting dimension
+        output = torch.transpose(output, 1,2)
         output = bl.b_voting(output)
 
         loss = F.cross_entropy(output,target)

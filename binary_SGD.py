@@ -23,7 +23,7 @@ class B_SGD(Optimizer):
     efficacy of gradient propagation techniques.)
     """
 
-    def __init__(self, params, lr=0.001):
+    def __init__(self, params, lr=0.01):
         self.lr = lr
         defaults = dict(lr=lr)
         super().__init__(params, defaults)

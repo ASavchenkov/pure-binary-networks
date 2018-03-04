@@ -287,7 +287,7 @@ class Residual_Binary(nn.Module):
         z = swap(z)
         x = b_and(x,z)
 
-        x = transpose2(x)
+        # x = transpose2(x)
         return x
 
 class Basic_Binary_Linear(nn.Module):
@@ -295,6 +295,7 @@ class Basic_Binary_Linear(nn.Module):
     def __init__(self, width):
         super().__init__()
         self.w = nn.Parameter(gen_rand_bits(width))
+        self.b = nn.Parameter(gen_rand_bits(width,1))
         
 
     def forward(self, x):
