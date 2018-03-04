@@ -120,9 +120,9 @@ class binary_MLP(nn.Module):
 
 
 
-width_log = 12
-model = binary_MLP(width_log,30)
-# model = split_test(width_log,1)
+width_log = 14
+# model = binary_MLP(width_log,30)
+model = bl.Basic_Binary_Linear(2**width_log)
 if args.cuda:
     model.cuda()
 

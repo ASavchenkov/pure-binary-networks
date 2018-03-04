@@ -290,6 +290,16 @@ class Residual_Binary(nn.Module):
         x = transpose2(x)
         return x
 
+class Basic_Binary_Linear(nn.Module):
+
+    def __init__(self, width):
+        super().__init__()
+        self.w = nn.Parameter(gen_rand_bits(width))
+        
+
+    def forward(self, x):
+        return b_xnor(x,self.w)
+
 #for testing gradients
 if __name__ == '__main__':
 
