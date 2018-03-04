@@ -104,11 +104,13 @@ def preprocess_binary_target(target):
     one_hot = np.packbits(one_hot,axis=0)
     return torch.ByteTensor(one_hot)
 
+
+
 class binary_MLP(nn.Module):
     def __init__(self,width_log, depth):
         super().__init__()
         self.width_log = width_log
-        self.layers = nn.Sequential(*[bl.Regular_Binary(2**width_log) for i in range(depth)])
+        self.layers = nn.Sequential(*[bl.Regular_Binary(2**width_log,split_func = bl.b_split_and if i%7==0 else bl.b_split_or ) for i in range(depth)])
     
     def forward(self, x):
         x = x.view(x.size(0),2**self.width_log)
