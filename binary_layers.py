@@ -301,6 +301,21 @@ class Basic_Binary_Linear(nn.Module):
     def forward(self, x):
         return b_xnor(x,self.w)
 
+class Reductionist_Binary(nn.Module):
+
+
+    def __init__(self, log_width, depth):
+        super().__init__()
+       
+        #multiple layers, decreasing in size by 2 each time.
+        self.ws = nn.ModuleList([nn.Parameter(gen_rand_bits((2**(log_width-i)),1)) for i in range(depth)])
+
+        self.b = nn.Parameter(gen_rand_bits(gen_rand_bits,1))
+        
+
+    def forward(self, x):
+        return b_xnor(x,self.w)
+
 #for testing gradients
 if __name__ == '__main__':
 
