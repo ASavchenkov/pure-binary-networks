@@ -301,6 +301,8 @@ class Basic_Binary_Linear(nn.Module):
     def forward(self, x):
         return b_xnor(x,self.w)
 
+#this is a terrible idea because it requires heavy splitting
+#beforehand. The whole point here is one split one merge.
 class Reductionist_Binary(nn.Module):
 
 
@@ -308,13 +310,15 @@ class Reductionist_Binary(nn.Module):
         super().__init__()
        
         #multiple layers, decreasing in size by 2 each time.
-        self.ws = nn.ModuleList([nn.Parameter(gen_rand_bits((2**(log_width-i)),1)) for i in range(depth)])
+        self.ws = nn.ParameterList([nn.Parameter(gen_rand_bits((2**(log_width-i)),1)) for i in range(depth)])
 
         self.b = nn.Parameter(gen_rand_bits(gen_rand_bits,1))
         
 
     def forward(self, x):
-        return b_xnor(x,self.w)
+        
+        for i in 
+        return b_xnor(x,self.w)]
 
 #for testing gradients
 if __name__ == '__main__':
