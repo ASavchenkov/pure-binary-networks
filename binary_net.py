@@ -129,7 +129,7 @@ class two_layer_MLP(nn.Module):
     
     def forward(self, x):
         x = x.view(x.size(0),2**self.width_log)
-        x = self.l1(x)
+        # x = self.l1(x)
         x = self.l2(x)
         #the output is just going to have to count shit
         return x

@@ -295,11 +295,15 @@ class Basic_Binary_Linear(nn.Module):
     def __init__(self, width):
         super().__init__()
         self.w = nn.Parameter(gen_rand_bits(width))
-        self.b = nn.Parameter(gen_rand_bits(width,1))
+        self.b1 = nn.Parameter(gen_rand_bits(width,1))
+        self.b2 = nn.Parameter(gen_rand_bits(width,0))
         
 
     def forward(self, x):
-        return b_xnor(x,self.w)
+        z = b_xnor(x,self.w)
+        # z = b_and(z,self.b1)
+        # z = b_or(z,self.b2)
+        return z
 
 #this is a terrible idea because it requires heavy splitting
 #beforehand. The whole point here is one split one merge.
@@ -316,9 +320,7 @@ class Reductionist_Binary(nn.Module):
         
 
     def forward(self, x):
-        
-        for i in 
-        return b_xnor(x,self.w)]
+        return b_xnor(x,self.ws)
 
 #for testing gradients
 if __name__ == '__main__':
