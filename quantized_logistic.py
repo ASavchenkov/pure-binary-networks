@@ -52,18 +52,26 @@ test_loader = torch.utils.data.DataLoader(
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
 
+#this is a real hard tanh, none of that pansy ass pytorch version
+def hard_tanh(x):
+    x = F.threshold(-x, 0, -1)
+    x = F.threshold(-x, 0, -1)
+    return x
 
 class Quantized_Logistic(nn.Module):
     def __init__(self):
         super().__init__()
         self.weight =  Parameter(torch.Tensor(10,32*32))
         self.weight.data.uniform_(-1/32,1/32)
-    def forward(self, x,quantize = False):
+    def forward(self, x,quantize_weights = False):
         x = x.view(-1, 32*32)
+       
+        x = hard_tanh(x)
+
         weight = self.weight
-        if quantize:
-            weight = F.threshold(-weight,0,-1) #flip because threshold thresholds below and not above
-            weight = F.threshold(-weight,0,-1) #and then that does the positive numbers
+        if quantize_weights:
+            weight = hard_tanh(weight)
+
         x = F.linear(x,weight)
         return F.log_softmax(x)
 
