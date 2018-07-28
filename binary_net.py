@@ -23,8 +23,8 @@ parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                     help='input batch size for testing (default: 1000)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                    help='number of epochs to train (default: 10)')
+parser.add_argument('--epochs', type=int, default=1, metavar='N',
+                    help='number of epochs to train (default: 1)')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.01)')
 parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
@@ -129,7 +129,7 @@ class two_layer_MLP(nn.Module):
     
     def forward(self, x):
         x = x.view(x.size(0),2**self.width_log)
-        # x = self.l1(x)
+        x = self.l1(x)
         x = self.l2(x)
         #the output is just going to have to count shit
         return x

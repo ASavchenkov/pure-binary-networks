@@ -248,8 +248,6 @@ class Regular_Binary(nn.Module):
         self.w1 = nn.Parameter(gen_rand_bits(width))
         self.w2 = nn.Parameter(gen_rand_bits(width))
         
-        self.b1 = nn.Parameter(gen_rand_bits(width,1))
-        # self.b2 = nn.Parameter(gen_rand_bits(width,1))
 
     def forward(self, x):
         z1, z2 = self.split_func(x)
@@ -259,10 +257,8 @@ class Regular_Binary(nn.Module):
         z_left = self.reduce_func(z1[:,:self.split], z1[:,self.split:])
         z_right = self.reduce_func(z2[:,self.split:], z2[:,:self.split])
         z = torch.cat((z_left,z_right),dim=1)
-        z = b_and(z,self.b1)
 
         z = transpose2(z)
-        z.register_hook(print_count)
         return z
 
 class Residual_Binary(nn.Module):
@@ -290,20 +286,20 @@ class Residual_Binary(nn.Module):
         # x = transpose2(x)
         return x
 
+#these don't necessarily need to have biases
+#and in fact biases should be injected as separate layers
+#since they're, again, just a specific feature being operated on.
 class Basic_Binary_Linear(nn.Module):
 
     def __init__(self, width):
         super().__init__()
         self.w = nn.Parameter(gen_rand_bits(width))
-        self.b1 = nn.Parameter(gen_rand_bits(width,1))
-        self.b2 = nn.Parameter(gen_rand_bits(width,0))
         
 
     def forward(self, x):
         z = b_xnor(x,self.w)
-        # z = b_and(z,self.b1)
-        # z = b_or(z,self.b2)
         return z
+
 
 #this is a terrible idea because it requires heavy splitting
 #beforehand. The whole point here is one split one merge.
