@@ -48,12 +48,14 @@ train_loader = torch.utils.data.DataLoader(
                    transform=transforms.Compose([
                        transforms.Pad(2),
                        transforms.ToTensor()
+                       # transforms.Normalize((0.1307,), (0.3081,))
                    ])),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST('./data', train=False, transform=transforms.Compose([
                        transforms.Pad(2),
                        transforms.ToTensor()
+                       # transforms.Normalize((0.1307,), (0.3081,))
                    ])),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -80,11 +82,20 @@ class MLP(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x)
 
+def hard_tanh(x):
+    x = F.threshold(-x, 0, -1)
+    x = F.threshold(-x, 0, -1)
+    return x
 #be careful using this on labels, as that results in a bunch of
 #duplicates (octuplicates technically)
 #currently we only work with single feature images
+
+#also this is now only going to do single bits,
+#since I have no idea what the hell the network would be able to do
+#with more bits.
 def preprocess_binary_data(data):
-    data = data*1.9
+    
+    data = data+(1-0.1307) #this splits the bits down the mean.
     data = data.byte()
     data = data.numpy()
 
@@ -129,13 +140,12 @@ class two_layer_MLP(nn.Module):
     
     def forward(self, x):
         x = x.view(x.size(0),2**self.width_log)
-        x = self.l1(x)
+        # x = self.l1(x)
         x = self.l2(x)
         #the output is just going to have to count shit
         return x
 
-width_log = 14
-# model = binary_MLP(width_log,30)
+width_log = 10
 # model = bl.Basic_Binary_Linear(2**width_log)
 model = two_layer_MLP(width_log)
 if args.cuda:
